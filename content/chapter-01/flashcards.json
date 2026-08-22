@@ -1,0 +1,33 @@
+﻿{
+  "chapter": "Chapter 1 - Introduction to Science",
+  "cards": [
+    {
+      "question": "What are the main steps of a scientific investigation?",
+      "answer": "Identify a problem, form a hypothesis, design and carry out an experiment, collect and analyse data, and draw a conclusion."
+    },
+    {
+      "question": "What is an independent variable?",
+      "answer": "The variable that is changed deliberately in an experiment."
+    },
+    {
+      "question": "What is a dependent variable?",
+      "answer": "The variable that is measured or observed in an experiment."
+    },
+    {
+      "question": "Why are hazard warning symbols important in the laboratory?",
+      "answer": "They warn us about dangers such as flammable, corrosive, or toxic substances so we can work safely."
+    },
+    {
+      "question": "What is the purpose of a cross-sectional diagram?",
+      "answer": "It shows the internal structure of an object or apparatus as if it has been cut open."
+    },
+    {
+      "question": "Why must measurements include a unit?",
+      "answer": "A number alone is meaningless; the unit tells us the scale and type of quantity being measured."
+    },
+    {
+      "question": "What is the difference between invention and discovery?",
+      "answer": "An invention is something new created by humans, while a discovery is finding something that already exists in nature."
+    }
+  ]
+}

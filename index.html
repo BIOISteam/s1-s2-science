@@ -1,0 +1,99 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>S1-S2 Integrated Science</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="min-h-screen bg-slate-50 text-slate-900">
+  <header class="border-b border-slate-200 bg-white shadow-sm">
+    <div class="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p class="text-sm font-medium uppercase tracking-wide text-emerald-700">Tutorial Centre</p>
+        <h1 class="text-2xl font-bold text-slate-900">S1-S2 Integrated Science</h1>
+        <p class="mt-1 text-sm text-slate-600">Study and revision platform</p>
+      </div>
+      <div class="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+        <span class="font-semibold">Current unit:</span>
+        Chapter 1 - Introduction to Science
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-6xl px-4 py-8">
+    <nav class="mb-6 flex flex-wrap gap-2" aria-label="Content sections">
+      <button class="tab-btn active" data-tab="slides" type="button">Slides</button>
+      <button class="tab-btn" data-tab="interactive" type="button">Interactive Model</button>
+      <button class="tab-btn" data-tab="flashcards" type="button">Flashcards</button>
+    </nav>
+
+    <section id="panel-slides" class="tab-panel active">
+      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 class="text-xl font-semibold">Chapter 1 Slides</h2>
+          <p class="text-sm text-slate-600">Quick notes for revision after lessons.</p>
+        </div>
+        <label class="text-sm text-slate-600">
+          Select slide
+          <select id="slide-select" class="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900"></select>
+        </label>
+      </div>
+
+      <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div class="border-b border-slate-200 px-4 py-3">
+          <h3 id="slide-title" class="font-medium text-slate-800"></h3>
+        </div>
+        <iframe id="slide-viewer" class="h-[75vh] w-full" title="Slide viewer" loading="lazy"></iframe>
+      </div>
+    </section>
+
+    <section id="panel-interactive" class="tab-panel hidden">
+      <div class="rounded-2xl border border-dashed border-slate-300 bg-white p-10 text-center shadow-sm">
+        <div class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-sky-100 text-2xl">test tube</div>
+        <h2 class="text-xl font-semibold">Interactive Model</h2>
+        <p class="mx-auto mt-2 max-w-xl text-sm text-slate-600">
+          This section is reserved for interactive HTML models. Chapter 1 does not have one yet.
+        </p>
+      </div>
+    </section>
+
+    <section id="panel-flashcards" class="tab-panel hidden">
+      <div class="mb-4">
+        <h2 class="text-xl font-semibold">Chapter 1 Flashcards</h2>
+        <p class="text-sm text-slate-600">Tap a card to flip. Use the buttons to move through the deck.</p>
+      </div>
+
+      <div class="mx-auto max-w-2xl">
+        <div id="flashcard" class="flashcard" tabindex="0" role="button" aria-label="Flip flashcard">
+          <div class="flashcard-inner">
+            <div class="flashcard-face flashcard-front">
+              <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Question</p>
+              <p id="flashcard-question" class="mt-4 text-lg font-medium"></p>
+            </div>
+            <div class="flashcard-face flashcard-back">
+              <p class="text-xs font-semibold uppercase tracking-wide text-sky-700">Answer</p>
+              <p id="flashcard-answer" class="mt-4 text-lg font-medium"></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="mt-6 flex items-center justify-between gap-3">
+          <button id="flashcard-prev" class="secondary-btn" type="button">Previous</button>
+          <p id="flashcard-counter" class="text-sm text-slate-600"></p>
+          <button id="flashcard-next" class="secondary-btn" type="button">Next</button>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="border-t border-slate-200 bg-white">
+    <div class="mx-auto max-w-6xl px-4 py-4 text-center text-xs text-slate-500">
+      Phase A preview - slides and flashcards only. Login and quizzes will come later.
+    </div>
+  </footer>
+
+  <script src="js/app.js" type="module"></script>
+</body>
+</html>
