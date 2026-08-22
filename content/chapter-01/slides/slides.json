@@ -1,30 +1,30 @@
-﻿[
-    {
-        "file":  "ch1-01-scientific-investigation.pdf",
-        "title":  "Identify the steps of scientific investigation"
-    },
-    {
-        "file":  "ch1-02-variables.pdf",
-        "title":  "Distinguish variables"
-    },
-    {
-        "file":  "ch1-03-hazard-symbols-lab-safety.pdf",
-        "title":  "Hazard warning symbols \u0026 lab safety"
-    },
-    {
-        "file":  "ch1-04-apparatus-diagrams.pdf",
-        "title":  "Apparatus \u0026 cross-sectional diagrams"
-    },
-    {
-        "file":  "ch1-05-measurement.pdf",
-        "title":  "Measurement"
-    },
-    {
-        "file":  "ch1-06-bunsen-burner.pdf",
-        "title":  "Structure and usage of the Bunsen burner"
-    },
-    {
-        "file":  "ch1-07-invention-discovery-branches.pdf",
-        "title":  "Invention vs discovery; branches of science"
-    }
+[
+  {
+    "file": "ch1-01-scientific-investigation.pdf",
+    "title": "Identify the steps of scientific investigation"
+  },
+  {
+    "file": "ch1-02-variables.pdf",
+    "title": "Distinguish variables"
+  },
+  {
+    "file": "ch1-03-hazard-symbols-lab-safety.pdf",
+    "title": "Hazard warning symbols & lab safety"
+  },
+  {
+    "file": "ch1-04-apparatus-diagrams.pdf",
+    "title": "Apparatus & cross-sectional diagrams"
+  },
+  {
+    "file": "ch1-05-measurement.pdf",
+    "title": "Measurement"
+  },
+  {
+    "file": "ch1-06-bunsen-burner.pdf",
+    "title": "Structure and usage of the Bunsen burner"
+  },
+  {
+    "file": "ch1-07-invention-discovery-branches.pdf",
+    "title": "Invention vs discovery; branches of science"
+  }
 ]
