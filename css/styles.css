@@ -1,3 +1,16 @@
+.brand-block {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.brand-logo {
+  width: 4.5rem;
+  height: 4.5rem;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
 .tab-btn {
   border: 1px solid #cbd5e1;
   background: #ffffff;
