@@ -1,0 +1,269 @@
+:root {
+  color: #1d1d1f;
+  background: #f5f5f7;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-synthesis: none;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+button,
+a {
+  font: inherit;
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.bio-hub-app {
+  min-height: 100vh;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 15% 10%, rgb(222 239 232 / 70%), transparent 34rem),
+    #f5f5f7;
+}
+
+.global-nav {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 100;
+  display: grid;
+  grid-template-columns: minmax(12rem, 1fr) auto minmax(12rem, 1fr);
+  align-items: center;
+  min-height: 68px;
+  padding: 10px clamp(18px, 3vw, 44px);
+  border-bottom: 1px solid rgb(0 0 0 / 7%);
+  background: rgb(255 255 255 / 82%);
+  box-shadow: 0 8px 30px rgb(0 0 0 / 4%);
+  backdrop-filter: saturate(180%) blur(22px);
+}
+
+.nav-brand-section,
+.nav-right-section {
+  display: flex;
+  align-items: center;
+}
+
+.nav-brand-section {
+  gap: 10px;
+}
+
+.nav-right-section {
+  justify-content: flex-end;
+}
+
+.nav-logo-link {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border-radius: 11px;
+  overflow: hidden;
+}
+
+.nav-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.nav-brand {
+  color: #1d1d1f;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.nav-center-group {
+  display: flex;
+  justify-content: center;
+}
+
+.global-nav-pill {
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid rgb(0 0 0 / 5%);
+  border-radius: 999px;
+  background: rgb(118 118 128 / 10%);
+}
+
+.nav-pill-btn {
+  cursor: pointer;
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 13px;
+  color: #6e6e73;
+  background: transparent;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  transition: color 180ms ease, background 180ms ease, box-shadow 180ms ease;
+}
+
+.nav-pill-btn:hover {
+  color: #1d1d1f;
+}
+
+.nav-pill-btn.active {
+  color: #176b4d;
+  background: #fff;
+  box-shadow: 0 2px 8px rgb(0 0 0 / 10%);
+}
+
+.nav-pill-btn:focus-visible,
+.lang-dropdown-toggle:focus-visible,
+.nav-brand:focus-visible,
+.nav-logo-link:focus-visible {
+  outline: 3px solid rgb(48 145 103 / 30%);
+  outline-offset: 2px;
+}
+
+.lang-dropdown-toggle {
+  display: flex;
+  cursor: pointer;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  border: 1px solid rgb(0 0 0 / 8%);
+  border-radius: 999px;
+  padding: 7px 11px;
+  color: #515154;
+  background: rgb(255 255 255 / 75%);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.lang-dropdown-toggle svg {
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.app-pages {
+  height: 100vh;
+  padding-top: 68px;
+}
+
+.bio-hub-page {
+  display: none;
+  width: 100%;
+  height: calc(100vh - 68px);
+}
+
+.bio-hub-page.active {
+  display: block;
+}
+
+.bio-hub-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #f7f9fb;
+}
+
+.page-placeholder {
+  display: grid;
+  place-content: center;
+  place-items: center;
+  color: #1d1d1f;
+  text-align: center;
+}
+
+.page-placeholder span {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  margin-bottom: 18px;
+  place-items: center;
+  border: 1px solid rgb(23 107 77 / 20%);
+  border-radius: 50%;
+  color: #176b4d;
+  background: rgb(255 255 255 / 72%);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.page-placeholder h1 {
+  margin: 0;
+  font-size: clamp(36px, 6vw, 72px);
+  font-weight: 650;
+  letter-spacing: -0.055em;
+}
+
+@media (max-width: 1000px) {
+  .global-nav {
+    grid-template-columns: auto 1fr auto;
+    padding-inline: 16px;
+  }
+
+  .nav-brand {
+    display: none;
+  }
+
+  .global-nav-pill {
+    max-width: calc(100vw - 150px);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .global-nav-pill::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .global-nav {
+    min-height: 60px;
+    padding: 8px 10px;
+  }
+
+  .nav-logo-link {
+    width: 34px;
+    height: 34px;
+  }
+
+  .global-nav-pill {
+    max-width: calc(100vw - 112px);
+  }
+
+  .nav-pill-btn {
+    padding: 8px 11px;
+    font-size: 11px;
+  }
+
+  .lang-dropdown-toggle {
+    width: 34px;
+    min-height: 34px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .lang-dropdown-toggle span {
+    display: none;
+  }
+
+  .app-pages {
+    padding-top: 60px;
+  }
+
+  .bio-hub-page {
+    height: calc(100vh - 60px);
+  }
+}

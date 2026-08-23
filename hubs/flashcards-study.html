@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flashcards Study | S1-S2 Integrated Science</title>
+  <link rel="stylesheet" href="../css/hub-tokens.css">
+  <link rel="stylesheet" href="css/flashcards-study.css">
+  <script src="embed.js"></script>
+</head>
+<body class="flashcards-study-page">
+  <header class="study-header">
+    <a class="viewer-back" href="./flashcards.html">← Back to flashcards</a>
+    <p id="study-counter" class="study-counter"></p>
+  </header>
+  <main class="study-main">
+    <h1 class="study-title">Chapter 1 — Introduction to Science</h1>
+    <div id="flashcard" class="study-card" tabindex="0" role="button" aria-label="Flip flashcard">
+      <div class="study-card-inner">
+        <div class="study-card-face study-card-front">
+          <p class="study-label">Question</p>
+          <p id="flashcard-question" class="study-text"></p>
+        </div>
+        <div class="study-card-face study-card-back">
+          <p class="study-label study-label--answer">Answer</p>
+          <p id="flashcard-answer" class="study-text"></p>
+        </div>
+      </div>
+    </div>
+    <div class="study-actions">
+      <button id="flashcard-prev" class="study-btn" type="button">Previous</button>
+      <button id="flashcard-next" class="study-btn" type="button">Next</button>
+    </div>
+  </main>
+  <script src="flashcards-study.js"></script>
+</body>
+</html>

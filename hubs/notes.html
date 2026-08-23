@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Notes | S1-S2 Integrated Science</title>
+  <link rel="stylesheet" href="../css/hub-tokens.css">
+  <link rel="stylesheet" href="../css/tools.css">
+  <link rel="stylesheet" href="css/tools-hub.css">
+  <link rel="stylesheet" href="css/quiz-hub.css">
+  <link rel="stylesheet" href="css/embed.css">
+  <script src="embed.js"></script>
+</head>
+<body class="bio-notes-hub">
+  <div class="bio-tools-hub-root chemistry-tools-page">
+    <div class="chem-tools-container">
+      <h1 class="chem-tools-title">Quick Notes</h1>
+      <p class="chem-tools-subtitle">PDF fast notes for after-class revision.</p>
+
+      <div class="quiz-chapter-grid quiz-chapter-grid--compact" role="list" id="notes-grid"></div>
+    </div>
+  </div>
+  <script>
+    const NOTES = [
+      { file: "ch1-01-scientific-investigation.pdf", title: "Steps of scientific investigation" },
+      { file: "ch1-02-variables.pdf", title: "Distinguish variables" },
+      { file: "ch1-03-hazard-symbols-lab-safety.pdf", title: "Hazard symbols & lab safety" },
+      { file: "ch1-04-apparatus-diagrams.pdf", title: "Apparatus & diagrams" },
+      { file: "ch1-05-measurement.pdf", title: "Measurement" },
+      { file: "ch1-06-bunsen-burner.pdf", title: "Bunsen burner" },
+      { file: "ch1-07-invention-discovery-branches.pdf", title: "Invention vs discovery" }
+    ];
+
+    const grid = document.getElementById("notes-grid");
+    grid.innerHTML = NOTES.map((note, index) => `
+      <div class="quiz-chapter-card quiz-chapter-card--compact"
+           data-href="./notes-viewer.html?pdf=${encodeURIComponent(note.file)}"
+           role="listitem" tabindex="0">
+        <div class="quiz-chapter-preview quiz-chapter-preview--ch3" aria-hidden="true">
+          <span class="quiz-chapter-preview-label quiz-chapter-preview-label--ch3">${index + 1}</span>
+        </div>
+        <div class="quiz-chapter-info">
+          <h2 class="quiz-chapter-name">${note.title}</h2>
+          <p class="quiz-chapter-desc">Chapter 1 fast note PDF</p>
+          <div class="quiz-chapter-meta">
+            <span class="quiz-chapter-cta">Open PDF →</span>
+          </div>
+        </div>
+      </div>
+    `).join("");
+  </script>
+  <script src="hub-common.js"></script>
+</body>
+</html>

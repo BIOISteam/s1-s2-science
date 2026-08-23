@@ -1,126 +1,71 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>S1-S2 Integrated Science</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="css/styles.css">
-</head>
-<body class="min-h-screen bg-slate-50 text-slate-900">
-  <header class="border-b border-slate-200 bg-white shadow-sm">
-    <div class="mx-auto flex max-w-6xl flex-col gap-4 px-4 py-6 sm:flex-row sm:items-center sm:justify-between">
-      <div class="brand-block">
-        <img
-          src="images/uni-plus-logo.png"
-          alt="UNI+ Unit Education logo"
-          class="brand-logo"
-        >
-        <div>
-          <p class="text-sm font-medium uppercase tracking-wide text-emerald-700">UNI+</p>
-          <h1 class="text-2xl font-bold text-slate-900">S1-S2 Integrated Science</h1>
-          <p class="mt-1 text-sm text-slate-600">Study and revision platform</p>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="description" content="S1-S2 Integrated Science interactive learning platform">
+    <title>S1-S2 Integrated Science | Interactive Learning Platform</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./css/bio-hub.css">
+  </head>
+  <body class="bio-hub-app">
+    <nav class="global-nav" id="global-nav" aria-label="Main navigation">
+      <div class="nav-brand-section">
+        <a href="#" class="nav-logo-link" data-page="table" aria-label="S1-S2 Integrated Science home">
+          <img src="./images/uni-plus-logo.png" class="nav-logo" alt="UNI+ logo">
+        </a>
+        <a href="#" class="nav-brand" data-page="table">S1-S2 Integrated Science</a>
+      </div>
+
+      <div class="nav-center-group">
+        <div class="global-nav-pill">
+          <button class="nav-pill-btn active" type="button" data-page="table">Slides</button>
+          <button class="nav-pill-btn" type="button" data-page="ions">Notes</button>
+          <button class="nav-pill-btn" type="button" data-page="tools">Virtual Lab</button>
+          <button class="nav-pill-btn" type="button" data-page="worksheet">Flashcards</button>
+          <button class="nav-pill-btn" type="button" data-page="settings">Tests</button>
+          <button class="nav-pill-btn" type="button" data-page="inclasstest">Class Tests</button>
+          <button class="nav-pill-btn" type="button" data-page="comics">Comics</button>
         </div>
       </div>
-      <div class="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
-        <span class="font-semibold">Current unit:</span>
-        Chapter 1 - Introduction to Science
-      </div>
-    </div>
-  </header>
 
-  <main class="mx-auto max-w-6xl px-4 py-8">
-    <nav class="mb-6 flex flex-wrap gap-2" aria-label="Content sections">
-      <button class="tab-btn active" data-tab="slides" type="button">Slides</button>
-      <button class="tab-btn" data-tab="interactive" type="button">Interactive Model</button>
-      <button class="tab-btn" data-tab="flashcards" type="button">Flashcards</button>
+      <div class="nav-right-section">
+        <button class="lang-dropdown-toggle" type="button" aria-label="Change language">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M3 12h18M12 3c2.4 2.5 3.6 5.5 3.6 9S14.4 18.5 12 21M12 3c-2.4 2.5-3.6 5.5-3.6 9S9.6 18.5 12 21" />
+          </svg>
+          <span>EN</span>
+        </button>
+      </div>
     </nav>
 
-    <section id="panel-slides" class="tab-panel is-active">
-      <div class="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 class="text-xl font-semibold">Chapter 1 Quick Notes</h2>
-          <p class="text-sm text-slate-600">PDF fast notes for revision after lessons.</p>
-        </div>
-        <label class="text-sm text-slate-600">
-          Select note
-          <select id="slide-select" class="ml-2 rounded-lg border border-slate-300 bg-white px-3 py-2 text-slate-900"></select>
-        </label>
-      </div>
-
-      <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div class="border-b border-slate-200 px-4 py-3">
-          <h3 id="slide-title" class="font-medium text-slate-800"></h3>
-        </div>
-        <embed id="slide-viewer" class="slide-viewer" type="application/pdf" title="Notes viewer" />
-        <p class="border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
-          PDF not showing?
-          <a id="slide-open-link" class="font-medium text-emerald-700 underline" href="#" target="_blank" rel="noopener noreferrer">Open this note in a new tab</a>
-        </p>
-      </div>
+    <main class="app-pages">
+    <section id="table-page" class="blank-page bio-hub-page active" data-page-panel="table">
+      <iframe class="bio-hub-frame" src="./hubs/slides.html" title="Slides"></iframe>
     </section>
-
-    <section id="panel-interactive" class="tab-panel">
-      <div class="mb-4">
-        <h2 class="text-xl font-semibold">Displacement Method Interactive Model</h2>
-        <p class="text-sm text-slate-600">排水法實驗 — bilingual interactive experiment for volume measurement.</p>
-      </div>
-
-      <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <iframe
-          id="interactive-viewer"
-          class="interactive-frame"
-          src="content/chapter-01/interactive/displacement-method.html"
-          title="Displacement Method Interactive Tool"
-          loading="lazy"
-        ></iframe>
-        <p class="border-t border-slate-200 px-4 py-3 text-sm text-slate-600">
-          Model not loading?
-          <a
-            class="font-medium text-emerald-700 underline"
-            href="content/chapter-01/interactive/displacement-method.html"
-            target="_blank"
-            rel="noopener noreferrer"
-          >Open interactive model in a new tab</a>
-        </p>
-      </div>
+    <section id="ions-page" class="blank-page bio-hub-page" data-page-panel="ions">
+      <iframe class="bio-hub-frame" src="./hubs/notes.html" title="Notes"></iframe>
     </section>
-
-    <section id="panel-flashcards" class="tab-panel">
-      <div class="mb-4">
-        <h2 class="text-xl font-semibold">Chapter 1 Flashcards</h2>
-        <p class="text-sm text-slate-600">Tap a card to flip. Use the buttons to move through the deck.</p>
-      </div>
-
-      <div class="mx-auto max-w-2xl">
-        <div id="flashcard" class="flashcard" tabindex="0" role="button" aria-label="Flip flashcard">
-          <div class="flashcard-inner">
-            <div class="flashcard-face flashcard-front">
-              <p class="text-xs font-semibold uppercase tracking-wide text-emerald-700">Question</p>
-              <p id="flashcard-question" class="mt-4 text-lg font-medium"></p>
-            </div>
-            <div class="flashcard-face flashcard-back">
-              <p class="text-xs font-semibold uppercase tracking-wide text-sky-700">Answer</p>
-              <p id="flashcard-answer" class="mt-4 text-lg font-medium"></p>
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-6 flex items-center justify-between gap-3">
-          <button id="flashcard-prev" class="secondary-btn" type="button">Previous</button>
-          <p id="flashcard-counter" class="text-sm text-slate-600"></p>
-          <button id="flashcard-next" class="secondary-btn" type="button">Next</button>
-        </div>
-      </div>
+    <section id="blank-page-1" class="blank-page bio-hub-page" data-page-panel="tools">
+      <iframe class="bio-hub-frame" src="./hubs/lab.html" title="Virtual Lab"></iframe>
     </section>
-  </main>
+    <section id="blank-page-2" class="blank-page bio-hub-page" data-page-panel="worksheet">
+      <iframe class="bio-hub-frame" src="./hubs/flashcards.html" title="Flashcards"></iframe>
+    </section>
+    <section id="settings-page" class="blank-page bio-hub-page" data-page-panel="settings">
+      <iframe class="bio-hub-frame" src="./hubs/quiz-hub.html" title="Tests"></iframe>
+    </section>
+    <section id="inclasstest-page" class="blank-page bio-hub-page" data-page-panel="inclasstest">
+      <iframe class="bio-hub-frame" src="./hubs/in-class-test-hub.html" title="Class Tests"></iframe>
+    </section>
+    <section id="comics-page" class="blank-page bio-hub-page" data-page-panel="comics">
+      <iframe class="bio-hub-frame" src="./hubs/comics.html" title="Comics"></iframe>
+    </section>
+    </main>
 
-  <footer class="border-t border-slate-200 bg-white">
-    <div class="mx-auto max-w-6xl px-4 py-4 text-center text-xs text-slate-500">
-      Phase A — slides, interactive model, and flashcards. Login and quizzes will come later.
-    </div>
-  </footer>
-
-  <script src="js/app.js" defer></script>
-</body>
+    <script src="./script.js" defer></script>
+  </body>
 </html>
