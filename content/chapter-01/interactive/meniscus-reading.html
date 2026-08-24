@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Reading the Meniscus | S1-S2 Integrated Science</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    body { margin: 0; }
+    input[type="range"].volume-slider {
+      -webkit-appearance: none;
+      appearance: none;
+      height: 12px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #bae6fd, #0284c7);
+      outline: none;
+    }
+    input[type="range"].volume-slider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #0369a1;
+      border: 3px solid #fff;
+      box-shadow: 0 1px 4px rgba(3, 105, 161, 0.45);
+      cursor: pointer;
+    }
+    .ripple-surface {
+      transform-origin: center;
+      animation: meniscusSettle 0.9s ease-out;
+    }
+    @keyframes meniscusSettle {
+      0% { transform: scaleX(1.012) translateY(-1.5px); }
+      35% { transform: scaleX(0.988) translateY(1px); }
+      70% { transform: scaleX(1.006) translateY(-0.4px); }
+      100% { transform: scaleX(1) translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo, useRef } = React;
+
+    const MAX_VOL = 50;
+    const MIN_VOL = 8;
+    const STEP = 0.5;
+
+    const GEO = {
+      innerL: 208,
+      innerR: 372,
+      glass: 9,
+      yRim: 48,
+      y0: 568,
+      y50: 88,
+      bottom: 586,
+    };
+
+    GEO.innerW = GEO.innerR - GEO.innerL;
+    GEO.cx = (GEO.innerL + GEO.innerR) / 2;
+    GEO.pxPerCm3 = (GEO.y0 - GEO.y50) / MAX_VOL;
+    GEO.dipPx = GEO.pxPerCm3 * 1.0;
+
+    const snap = (v) => Math.round(v / STEP) * STEP;
+    const fmt = (v) => v.toFixed(1);
+
+    const volumeToY = (vol) => GEO.y0 - vol * GEO.pxPerCm3;
+
+    function randomVolume(except) {
+      const pool = [];
+      for (let v = 12; v <= 44; v += STEP) pool.push(Number(v.toFixed(1)));
+      const filtered = pool.filter((v) => v !== except);
+      return filtered[Math.floor(Math.random() * filtered.length)];
+    }
+
+    function randomEyeY(meniscusY) {
+      const options = [
+        meniscusY - 70,
+        meniscusY - 42,
+        meniscusY + 42,
+        meniscusY + 78,
+      ];
+      return Math.max(GEO.y50 - 10, Math.min(GEO.y0 + 16, options[Math.floor(Math.random() * options.length)]));
+    }
+
+    const MeniscusTool = () => {
+      const svgRef = useRef(null);
+      const dragRef = useRef(false);
+      const [volume, setVolume] = useState(28.0);
+      const [displayVol, setDisplayVol] = useState(28.0);
+      const [liquid, setLiquid] = useState("water");
+      const [eyeY, setEyeY] = useState(() => volumeToY(28.0));
+      const [revealed, setRevealed] = useState(false);
+      const [round, setRound] = useState(1);
+      const [guess, setGuess] = useState("");
+      const [feedback, setFeedback] = useState(null);
+      const [showGuide, setShowGuide] = useState(false);
+      const [showParallaxRead, setShowParallaxRead] = useState(false);
+      const [rippleKey, setRippleKey] = useState(0);
+      const [hintStep, setHintStep] = useState(0);
+
+      const isWater = liquid === "water";
+
+      const displayRef = useRef(displayVol);
+      displayRef.current = displayVol;
+
+      useEffect(() => {
+        let frame;
+        const tick = () => {
+          const current = displayRef.current;
+          const next = current + (volume - current) * 0.22;
+          if (Math.abs(next - volume) < 0.03) {
+            displayRef.current = volume;
+            setDisplayVol(volume);
+            return;
+          }
+          displayRef.current = next;
+          setDisplayVol(next);
+          frame = requestAnimationFrame(tick);
+        };
+        frame = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(frame);
+      }, [volume]);
+
+      const geom = useMemo(() => {
+        const readY = volumeToY(displayVol);
+        const dip = isWater ? GEO.dipPx : -GEO.dipPx;
+        const wallY = readY - dip;
+        const backY = wallY - 4;
+        return { readY, wallY, backY, dip };
+      }, [displayVol, isWater]);
+
+      const eyeDelta = eyeY - geom.readY;
+      const eyeLevel = Math.abs(eyeDelta) < 10;
+      const eyeHigh = eyeDelta < -10;
+      const parallaxCm3 = Math.max(-2.5, Math.min(2.5, -eyeDelta / GEO.pxPerCm3 * 0.22));
+      const apparentVol = snap(Math.max(MIN_VOL, Math.min(MAX_VOL, volume + parallaxCm3)));
+      const topOfMeniscusVol = snap(volume + (isWater ? 1.0 : -1.0));
+
+      const hideAnswer = (nextRound) => {
+        setRevealed(false);
+        setGuess("");
+        setFeedback(null);
+        setHintStep(0);
+        setShowGuide(false);
+        if (nextRound) setRound((r) => r + 1);
+      };
+
+      const changeVolume = (next, opts = {}) => {
+        const v = snap(Math.max(MIN_VOL, Math.min(46, next)));
+        if (v === volume && !opts.force) return;
+        setVolume(v);
+        setRippleKey((k) => k + 1);
+        hideAnswer(opts.newRound);
+        if (opts.randomEye) setEyeY(randomEyeY(volumeToY(v)));
+      };
+
+      const handleNewReading = () => {
+        const v = randomVolume(volume);
+        changeVolume(v, { newRound: true, randomEye: true, force: true });
+      };
+
+      const clientToSvgY = (clientY) => {
+        const svg = svgRef.current;
+        if (!svg) return eyeY;
+        const pt = svg.createSVGPoint();
+        pt.x = 0;
+        pt.y = clientY;
+        const loc = pt.matrixTransform(svg.getScreenCTM().inverse());
+        return Math.max(GEO.y50 - 18, Math.min(GEO.y0 + 22, loc.y));
+      };
+
+      useEffect(() => {
+        const move = (e) => {
+          if (!dragRef.current) return;
+          setEyeY(clientToSvgY(e.clientY));
+        };
+        const up = () => { dragRef.current = false; };
+        window.addEventListener("pointermove", move);
+        window.addEventListener("pointerup", up);
+        return () => {
+          window.removeEventListener("pointermove", move);
+          window.removeEventListener("pointerup", up);
+        };
+      }, []);
+
+      const checkGuess = () => {
+        const parsed = Number.parseFloat(guess);
+        if (Number.isNaN(parsed)) {
+          setFeedback({ ok: false, en: "Enter a number first.", zh: "請先輸入數字。" });
+          return;
+        }
+        if (Math.abs(parsed - volume) < 0.05) {
+          setFeedback({
+            ok: true,
+            en: `Correct! The volume is ${fmt(volume)} cm³.`,
+            zh: `正確！體積係 ${fmt(volume)} cm³。`,
+          });
+          setRevealed(true);
+          setShowGuide(true);
+          return;
+        }
+        if (Math.abs(parsed - topOfMeniscusVol) < 0.05) {
+          setFeedback({
+            ok: false,
+            en: isWater
+              ? "That looks like the TOP of the meniscus. For water, read the BOTTOM."
+              : "That looks like the BOTTOM of the meniscus. For mercury, read the TOP.",
+            zh: isWater
+              ? "你好可能讀咗彎月面嘅頂。水要讀最底。"
+              : "你好可能讀咗彎月面嘅底。水銀要讀最高點。",
+          });
+          return;
+        }
+        if (!eyeLevel && Math.abs(parsed - apparentVol) < 0.05) {
+          setFeedback({
+            ok: false,
+            en: "That matches a parallax error. Move the eye to the same level as the meniscus.",
+            zh: "呢個係視差造成嘅錯讀。眼睛要同彎月面同一高度。",
+          });
+          return;
+        }
+        setFeedback({
+          ok: false,
+          en: "Not quite. Check eye level, then read the correct part of the meniscus.",
+          zh: "未啱。先檢查視線高度，再讀彎月面正確嘅位置。",
+        });
+      };
+
+      const waterPath = () => {
+        const { readY, wallY, backY } = geom;
+        const r = 18;
+        const L = GEO.innerL;
+        const R = GEO.innerR;
+        const B = GEO.bottom - 8;
+        const c1 = L + GEO.innerW * 0.28;
+        const c2 = R - GEO.innerW * 0.28;
+        return [
+          `M ${L} ${wallY}`,
+          `C ${c1} ${wallY}, ${L + GEO.innerW * 0.38} ${readY}, ${GEO.cx} ${readY}`,
+          `C ${R - GEO.innerW * 0.38} ${readY}, ${c2} ${wallY}, ${R} ${wallY}`,
+          `L ${R} ${B - r}`,
+          `Q ${R} ${B} ${R - r} ${B}`,
+          `L ${L + r} ${B}`,
+          `Q ${L} ${B} ${L} ${B - r}`,
+          "Z",
+        ].join(" ");
+      };
+
+      const meniscusD = () => {
+        const { readY, wallY } = geom;
+        const L = GEO.innerL;
+        const R = GEO.innerR;
+        return [
+          `M ${L} ${wallY}`,
+          `C ${L + GEO.innerW * 0.28} ${wallY}, ${L + GEO.innerW * 0.38} ${readY}, ${GEO.cx} ${readY}`,
+          `C ${R - GEO.innerW * 0.38} ${readY}, ${R - GEO.innerW * 0.28} ${wallY}, ${R} ${wallY}`,
+        ].join(" ");
+      };
+
+      const backMeniscusD = () => {
+        const { readY, backY } = geom;
+        const L = GEO.innerL + 6;
+        const R = GEO.innerR - 6;
+        const w = R - L;
+        const mid = isWater ? readY - 5 : readY + 5;
+        return [
+          `M ${L} ${backY}`,
+          `C ${L + w * 0.3} ${backY}, ${L + w * 0.4} ${mid}, ${(L + R) / 2} ${mid}`,
+          `C ${R - w * 0.4} ${mid}, ${R - w * 0.3} ${backY}, ${R} ${backY}`,
+        ].join(" ");
+      };
+
+      const ticks = [];
+      for (let v = 0; v <= MAX_VOL; v += 1) {
+        ticks.push(v);
+      }
+
+      const zoomY0 = 430;
+      const zoomY1 = 90;
+      const zoomMap = (vol) => {
+        const t = (vol - (displayVol - 4)) / 8;
+        return zoomY0 - t * (zoomY0 - zoomY1);
+      };
+
+      const liquidFill = isWater ? "url(#waterGrad)" : "url(#mercuryGrad)";
+      const liquidStroke = isWater ? "#0369a1" : "#4b5563";
+
+      return (
+        <div className="flex flex-col lg:flex-row gap-6 p-4 lg:p-6 bg-slate-50 min-h-screen font-sans text-slate-800">
+          <div className="w-full lg:w-[62%] bg-white rounded-xl shadow-lg p-4 lg:p-6 border border-slate-200 flex flex-col">
+            <div className="mb-3">
+              <h1 className="text-2xl font-bold text-sky-800">Reading the Meniscus</h1>
+              <h2 className="text-lg font-bold text-sky-600">讀取彎月面 · 量度液體體積</h2>
+              <p className="text-sm text-slate-500 mt-1">
+                50 cm³ measuring cylinder · smallest division 1 cm³ · estimate to 0.5 cm³
+              </p>
+            </div>
+
+            <div className="relative w-full flex-1 min-h-[520px] bg-gradient-to-b from-sky-50 to-slate-100 rounded-lg border border-slate-100 overflow-hidden">
+              <svg ref={svgRef} viewBox="0 0 760 640" className="w-full h-full max-h-[78vh]">
+                <defs>
+                  <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(56,189,248,0.38)" />
+                    <stop offset="45%" stopColor="rgba(14,165,233,0.55)" />
+                    <stop offset="100%" stopColor="rgba(3,105,161,0.72)" />
+                  </linearGradient>
+                  <linearGradient id="mercuryGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#e5e7eb" />
+                    <stop offset="40%" stopColor="#9ca3af" />
+                    <stop offset="100%" stopColor="#4b5563" />
+                  </linearGradient>
+                  <linearGradient id="glassShine" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="rgba(255,255,255,0.55)" />
+                    <stop offset="35%" stopColor="rgba(255,255,255,0.05)" />
+                    <stop offset="70%" stopColor="rgba(148,163,184,0.12)" />
+                    <stop offset="100%" stopColor="rgba(255,255,255,0.28)" />
+                  </linearGradient>
+                  <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#c4a574" />
+                    <stop offset="100%" stopColor="#8b6914" />
+                  </linearGradient>
+                  <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+                    <feGaussianBlur stdDeviation="1.2" result="b" />
+                    <feMerge>
+                      <feMergeNode in="b" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
+                  <clipPath id="innerClip">
+                    <rect x={GEO.innerL} y={GEO.yRim} width={GEO.innerW} height={GEO.bottom - GEO.yRim - 4} rx="16" />
+                  </clipPath>
+                </defs>
+
+                <rect x="40" y="600" width="430" height="28" rx="4" fill="url(#wood)" />
+                <rect x="40" y="600" width="430" height="8" rx="4" fill="#d4b896" />
+
+                <ellipse cx={GEO.cx} cy={GEO.bottom + 10} rx="92" ry="9" fill="rgba(15,23,42,0.12)" />
+
+                {/* back glass */}
+                <path
+                  d={`M ${GEO.innerL - GEO.glass} ${GEO.yRim + 8}
+                      L ${GEO.innerL - GEO.glass} ${GEO.bottom - 18}
+                      Q ${GEO.innerL - GEO.glass} ${GEO.bottom + 8} ${GEO.cx} ${GEO.bottom + 8}
+                      Q ${GEO.innerR + GEO.glass} ${GEO.bottom + 8} ${GEO.innerR + GEO.glass} ${GEO.bottom - 18}
+                      L ${GEO.innerR + GEO.glass} ${GEO.yRim + 8}`}
+                  fill="#e8eef5"
+                  stroke="#64748b"
+                  strokeWidth="2.5"
+                />
+
+                <g clipPath="url(#innerClip)">
+                  <path d={waterPath()} fill={liquidFill} className="transition-all duration-200" />
+                  <ellipse
+                    cx={GEO.cx}
+                    cy={(geom.readY + geom.wallY) / 2}
+                    rx={GEO.innerW / 2 - 1}
+                    ry={Math.abs(geom.dip) * 0.52}
+                    fill={isWater ? "rgba(186,230,253,0.28)" : "rgba(255,255,255,0.18)"}
+                    stroke={isWater ? "rgba(7,89,133,0.35)" : "rgba(75,85,99,0.4)"}
+                    strokeWidth="1.2"
+                  />
+                  <path d={backMeniscusD()} fill="none" stroke={isWater ? "rgba(125,211,252,0.7)" : "rgba(209,213,219,0.7)"} strokeWidth="3" />
+                  <g key={rippleKey} className="ripple-surface">
+                    <path d={meniscusD()} fill="none" stroke={liquidStroke} strokeWidth="2.4" filter="url(#softGlow)" />
+                    <path d={meniscusD()} fill="none" stroke="rgba(255,255,255,0.65)" strokeWidth="1.1" transform="translate(0, 1.4)" />
+                  </g>
+                  {/* wetting film */}
+                  {isWater && (
+                    <path
+                      d={`M ${GEO.innerL} ${geom.wallY - 8} L ${GEO.innerL} ${geom.wallY + 2}
+                          M ${GEO.innerR} ${geom.wallY - 8} L ${GEO.innerR} ${geom.wallY + 2}`}
+                      stroke="rgba(125,211,252,0.55)"
+                      strokeWidth="3"
+                    />
+                  )}
+                </g>
+
+                {/* glass shine */}
+                <rect x={GEO.innerL + 8} y={GEO.yRim + 12} width="18" height="470" rx="9" fill="url(#glassShine)" opacity="0.7" />
+                <rect x={GEO.innerR - 22} y={GEO.yRim + 20} width="8" height="200" rx="4" fill="rgba(255,255,255,0.25)" />
+
+                {/* rim + spout */}
+                <ellipse cx={GEO.cx} cy={GEO.yRim + 6} rx="91" ry="11" fill="none" stroke="#475569" strokeWidth="5" />
+                <ellipse cx={GEO.cx} cy={GEO.yRim + 6} rx="82" ry="7" fill="rgba(226,232,240,0.35)" stroke="#94a3b8" strokeWidth="1.5" />
+                <path d={`M ${GEO.innerR + 6} ${GEO.yRim - 2} Q ${GEO.innerR + 38} ${GEO.yRim - 18} ${GEO.innerR + 46} ${GEO.yRim + 10} L ${GEO.innerR + 8} ${GEO.yRim + 18} Z`} fill="#e8eef5" stroke="#64748b" strokeWidth="2" />
+
+                {/* scale */}
+                {ticks.map((v) => {
+                  const y = volumeToY(v);
+                  const major = v % 5 === 0;
+                  return (
+                    <g key={v}>
+                      <line
+                        x1={GEO.innerR - (major ? 22 : 11)}
+                        y1={y}
+                        x2={GEO.innerR - 1}
+                        y2={y}
+                        stroke="#1e293b"
+                        strokeWidth={major ? 1.8 : 1}
+                      />
+                      {major && (
+                        <text x={GEO.innerR + 10} y={y + 4} fontSize="13" fontWeight="700" fill="#0f172a" fontFamily="ui-sans-serif, system-ui">
+                          {v}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+                <text x={GEO.innerR + 8} y={GEO.y50 - 18} fontSize="12" fontWeight="700" fill="#334155">cm³</text>
+
+                {/* reading guide */}
+                {(showGuide || revealed) && (
+                  <g>
+                    <line x1={GEO.innerL - 14} y1={geom.readY} x2={GEO.innerR + 58} y2={geom.readY} stroke="#dc2626" strokeWidth="1.6" strokeDasharray="6 4" />
+                    <polygon points={`${GEO.innerR + 58},${geom.readY} ${GEO.innerR + 48},${geom.readY - 5} ${GEO.innerR + 48},${geom.readY + 5}`} fill="#dc2626" />
+                    <text x={GEO.cx} y={geom.readY - 10} textAnchor="middle" fontSize="12" fontWeight="800" fill="#b91c1c">
+                      {isWater ? "Read BOTTOM 讀最底" : "Read TOP 讀最高"}
+                    </text>
+                  </g>
+                )}
+
+                {/* eye + sight line */}
+                <line
+                  x1="118"
+                  y1={eyeY}
+                  x2={GEO.innerL - 4}
+                  y2={eyeLevel ? geom.readY : (eyeHigh ? geom.readY - 8 : geom.readY + 8)}
+                  stroke={eyeLevel ? "#15803d" : "#d97706"}
+                  strokeWidth="2"
+                  strokeDasharray="5 4"
+                />
+                <g
+                  style={{ cursor: "grab" }}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    dragRef.current = true;
+                    setEyeY(clientToSvgY(e.clientY));
+                  }}
+                >
+                  <rect x="28" y={GEO.y50 - 24} width="88" height={GEO.y0 - GEO.y50 + 48} fill="transparent" />
+                  <line x1="72" y1={GEO.y50 - 8} x2="72" y2={GEO.y0 + 8} stroke="#cbd5e1" strokeWidth="6" strokeLinecap="round" />
+                  <circle cx="72" cy={eyeY} r="26" fill="#fff" stroke="#0f172a" strokeWidth="3" />
+                  <circle cx="78" cy={eyeY} r="12" fill={eyeLevel ? "#15803d" : "#d97706"} />
+                  <circle cx="82" cy={eyeY - 3} r="4" fill="#fff" />
+                  <text x="72" y={eyeY + 44} textAnchor="middle" fontSize="11" fontWeight="700" fill="#334155">Eye 眼</text>
+                </g>
+                <text x="24" y={GEO.y50 - 14} fontSize="11" fill="#64748b">too high 過高</text>
+                <text x="24" y={GEO.y0 + 28} fontSize="11" fill="#64748b">too low 過低</text>
+
+                {!eyeLevel && (
+                  <g>
+                    <rect x="8" y={Math.max(36, eyeY - 58)} width="112" height="34" rx="8" fill="#fff7ed" stroke="#f59e0b" />
+                    <text x="64" y={Math.max(36, eyeY - 58) + 14} textAnchor="middle" fontSize="11" fontWeight="800" fill="#b45309">
+                      {eyeHigh ? "Looking down" : "Looking up"}
+                    </text>
+                    <text x="64" y={Math.max(36, eyeY - 58) + 27} textAnchor="middle" fontSize="10" fill="#9a3412">
+                      {eyeHigh ? "視差：由上望" : "視差：由下望"}
+                    </text>
+                  </g>
+                )}
+
+                {showParallaxRead && !eyeLevel && (
+                  <line x1={GEO.innerL} y1={volumeToY(apparentVol)} x2={GEO.innerR + 40} y2={volumeToY(apparentVol)} stroke="#d97706" strokeWidth="1.5" strokeDasharray="3 3" />
+                )}
+
+                <text x={GEO.cx} y="28" textAnchor="middle" fontSize="15" fontWeight="800" fill="#0f172a">Measuring cylinder 量筒</text>
+
+                {/* zoom callout */}
+                <g transform="translate(500, 70)">
+                  <rect x="0" y="0" width="230" height="420" rx="16" fill="#fff" stroke="#cbd5e1" strokeWidth="2" />
+                  <text x="16" y="28" fontSize="14" fontWeight="800" fill="#0f172a">Zoom · 放大彎月面</text>
+                  <text x="16" y="48" fontSize="11" fill="#64748b">Read this curve against the scale</text>
+                  <rect x="28" y="64" width="120" height="330" rx="8" fill="#f8fafc" stroke="#94a3b8" />
+                  {/* zoom water */}
+                  {(() => {
+                    const zyRead = zoomMap(displayVol);
+                    const zyWall = zoomMap(displayVol + (isWater ? 1 : -1));
+                    const zL = 32;
+                    const zR = 144;
+                    const zB = 388;
+                    const d = [
+                      `M ${zL} ${zyWall}`,
+                      `C ${zL + 30} ${zyWall}, ${zL + 40} ${zyRead}, ${(zL + zR) / 2} ${zyRead}`,
+                      `C ${zR - 40} ${zyRead}, ${zR - 30} ${zyWall}, ${zR} ${zyWall}`,
+                      `L ${zR} ${zB} L ${zL} ${zB} Z`,
+                    ].join(" ");
+                    const md = [
+                      `M ${zL} ${zyWall}`,
+                      `C ${zL + 30} ${zyWall}, ${zL + 40} ${zyRead}, ${(zL + zR) / 2} ${zyRead}`,
+                      `C ${zR - 40} ${zyRead}, ${zR - 30} ${zyWall}, ${zR} ${zyWall}`,
+                    ].join(" ");
+                    return (
+                      <g>
+                        <path d={d} fill={liquidFill} />
+                        <path d={md} fill="none" stroke={liquidStroke} strokeWidth="2.5" />
+                        {(showGuide || revealed) && (
+                          <g>
+                            <line x1={zL - 4} y1={zyRead} x2={zR + 52} y2={zyRead} stroke="#dc2626" strokeWidth="1.5" strokeDasharray="4 3" />
+                            <text x={zR + 6} y={zyRead + 4} fontSize="11" fontWeight="800" fill="#b91c1c">
+                              {isWater ? "bottom" : "top"}
+                            </text>
+                            <text x={zR + 6} y={zyWall + 4} fontSize="11" fill="#64748b">
+                              {isWater ? "top" : "bottom"}
+                            </text>
+                          </g>
+                        )}
+                      </g>
+                    );
+                  })()}
+                  {Array.from({ length: MAX_VOL + 1 }, (_, v) => {
+                    if (v < displayVol - 4.05 || v > displayVol + 4.05) return null;
+                    const y = zoomMap(v);
+                    return (
+                      <g key={v}>
+                        <line x1="126" y1={y} x2="144" y2={y} stroke="#1e293b" strokeWidth="1.6" />
+                        <text x="152" y={y + 4} fontSize="11" fontWeight="700" fill="#0f172a">{v}</text>
+                      </g>
+                    );
+                  })}
+                </g>
+              </svg>
+            </div>
+          </div>
+
+          <div className="w-full lg:w-[38%] flex flex-col gap-4">
+            <div className="bg-amber-50 rounded-xl shadow-lg p-5 border-2 border-amber-300">
+              <div className="flex items-center justify-between gap-2 mb-2">
+                <h3 className="text-lg font-bold text-amber-900">
+                  Ask the class · 問一問同學
+                </h3>
+                <span className="text-xs font-bold bg-amber-200 text-amber-900 px-2 py-1 rounded-full">Reading {round}</span>
+              </div>
+              <p className="text-sm text-amber-800 mb-3">
+                Change the volume, then pause. Do not reveal until students have answered.
+              </p>
+              <ol className="space-y-2 text-sm text-slate-800">
+                <li className={`p-2 rounded-lg ${hintStep >= 1 ? "bg-white border border-green-200" : "bg-white/70 border border-amber-200"}`}>
+                  <span className="font-bold text-amber-700">1.</span> Where should the eye be?
+                  <span className="block text-slate-500">眼睛應該喺邊個高度？</span>
+                  {hintStep >= 1 && (
+                    <p className="mt-1 font-semibold text-green-700">Level with the meniscus · 同彎月面同一高度（避免視差）</p>
+                  )}
+                </li>
+                <li className={`p-2 rounded-lg ${hintStep >= 2 ? "bg-white border border-green-200" : "bg-white/70 border border-amber-200"}`}>
+                  <span className="font-bold text-amber-700">2.</span> Top or bottom of the meniscus?
+                  <span className="block text-slate-500">讀彎月面嘅頂定底？</span>
+                  {hintStep >= 2 && (
+                    <p className="mt-1 font-semibold text-green-700">
+                      {isWater ? "BOTTOM — water wets the glass (concave)." : "TOP — mercury is convex."}
+                      <span className="block">{isWater ? "讀最底 — 水會沿玻璃向上（凹面）" : "讀最高 — 水銀係凸面"}</span>
+                    </p>
+                  )}
+                </li>
+                <li className={`p-2 rounded-lg ${revealed ? "bg-white border border-green-200" : "bg-white/70 border border-amber-200"}`}>
+                  <span className="font-bold text-amber-700">3.</span> What is the volume?
+                  <span className="block text-slate-500">液體體積係幾多？</span>
+                  {revealed ? (
+                    <p className="mt-2 text-3xl font-black text-sky-800">{fmt(volume)} <span className="text-lg font-bold">cm³</span></p>
+                  ) : (
+                    <p className="mt-2 text-3xl font-black text-slate-300 tracking-widest">??.? <span className="text-lg">cm³</span></p>
+                  )}
+                </li>
+              </ol>
+              <div className="flex flex-wrap gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setHintStep((s) => Math.min(2, s + 1))}
+                  disabled={hintStep >= 2}
+                  className="flex-1 min-w-[120px] py-2 px-3 rounded-lg font-bold text-sm bg-white border border-amber-400 text-amber-900 hover:bg-amber-100 disabled:opacity-40"
+                >
+                  Next hint 提示
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRevealed(true);
+                    setShowGuide(true);
+                    setHintStep(2);
+                  }}
+                  className="flex-1 min-w-[120px] py-2 px-3 rounded-lg font-bold text-sm bg-amber-600 hover:bg-amber-700 text-white"
+                >
+                  Reveal 顯示答案
+                </button>
+              </div>
+              {revealed && !eyeLevel && (
+                <p className="mt-3 text-sm font-semibold text-orange-800 bg-orange-100 rounded-lg p-2">
+                  True volume is {fmt(volume)} cm³, but this eye position would wrongly read about {fmt(apparentVol)} cm³.
+                  <span className="block font-normal mt-1">真正體積 {fmt(volume)} cm³；呢個視線會錯讀約 {fmt(apparentVol)} cm³。</span>
+                </p>
+              )}
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-5 border border-slate-200">
+              <h3 className="text-lg font-bold text-slate-800 mb-3 border-b pb-2">
+                Teacher controls <span className="text-slate-500 text-base ml-1">老師控制</span>
+              </h3>
+              <div className="flex justify-between items-end mb-2">
+                <label className="font-bold text-slate-700">
+                  Liquid volume <span className="block text-sm font-normal text-slate-500">液體體積</span>
+                </label>
+                <span className="text-sm font-bold text-slate-400">{revealed ? `${fmt(volume)} cm³` : "hidden 已隱藏"}</span>
+              </div>
+              <input
+                type="range"
+                className="volume-slider w-full cursor-pointer"
+                min={MIN_VOL}
+                max={46}
+                step={STEP}
+                value={volume}
+                onChange={(e) => changeVolume(Number(e.target.value))}
+                onPointerUp={() => setRound((r) => r + 1)}
+              />
+              <div className="flex justify-between text-xs text-slate-400 mt-1">
+                <span>{MIN_VOL} cm³</span>
+                <span>46 cm³</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-4">
+                <button
+                  type="button"
+                  onClick={handleNewReading}
+                  className="py-3 rounded-lg font-bold bg-sky-600 hover:bg-sky-700 text-white shadow-md"
+                >
+                  New volume
+                  <span className="block text-xs font-normal">隨機新體積</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEyeY(geom.readY)}
+                  className="py-3 rounded-lg font-bold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md"
+                >
+                  Eye level
+                  <span className="block text-xs font-normal">對準彎月面</span>
+                </button>
+              </div>
+              <p className="text-xs text-slate-500 mt-3">
+                Drag the eye on the left of the cylinder. Changing volume hides the answer automatically.
+                <span className="block">拖動眼睛。改體積會自動隱藏答案。</span>
+              </p>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-5 border border-slate-200">
+              <h3 className="text-lg font-bold text-slate-800 mb-3 border-b pb-2">
+                Student check <span className="text-slate-500 text-base ml-1">學生作答</span>
+              </h3>
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="0.5"
+                  min={MIN_VOL}
+                  max={MAX_VOL}
+                  value={guess}
+                  onChange={(e) => setGuess(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") checkGuess(); }}
+                  placeholder="e.g. 28.5"
+                  className="flex-1 border-2 border-slate-200 rounded-lg px-3 py-2 font-bold text-lg focus:border-sky-500 outline-none"
+                />
+                <span className="self-center font-bold text-slate-500">cm³</span>
+                <button
+                  type="button"
+                  onClick={checkGuess}
+                  className="px-4 py-2 rounded-lg font-bold bg-slate-800 hover:bg-slate-900 text-white"
+                >
+                  Check
+                </button>
+              </div>
+              {feedback && (
+                <p className={`mt-3 text-sm font-semibold rounded-lg p-3 ${feedback.ok ? "bg-green-50 text-green-800 border border-green-200" : "bg-rose-50 text-rose-800 border border-rose-200"}`}>
+                  {feedback.en}
+                  <span className="block font-normal mt-1">{feedback.zh}</span>
+                </p>
+              )}
+            </div>
+
+            <div className="bg-white rounded-xl shadow-lg p-5 border border-slate-200">
+              <h3 className="text-lg font-bold text-slate-800 mb-3 border-b pb-2">
+                Options <span className="text-slate-500 text-base ml-1">選項</span>
+              </h3>
+              <div className="flex gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => { setLiquid("water"); hideAnswer(false); }}
+                  className={`flex-1 py-2 rounded-lg font-bold border-2 ${isWater ? "bg-sky-50 border-sky-500 text-sky-800" : "bg-white border-slate-200 text-slate-500"}`}
+                >
+                  Water 水
+                  <span className="block text-xs font-normal">concave 凹</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setLiquid("mercury"); hideAnswer(false); }}
+                  className={`flex-1 py-2 rounded-lg font-bold border-2 ${!isWater ? "bg-slate-100 border-slate-600 text-slate-800" : "bg-white border-slate-200 text-slate-500"}`}
+                >
+                  Mercury 水銀
+                  <span className="block text-xs font-normal">convex 凸</span>
+                </button>
+              </div>
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 cursor-pointer">
+                <input type="checkbox" checked={showGuide} onChange={(e) => setShowGuide(e.target.checked)} className="w-4 h-4 accent-sky-600" />
+                Show reading line 顯示讀數線
+              </label>
+              <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 cursor-pointer mt-2">
+                <input type="checkbox" checked={showParallaxRead} onChange={(e) => setShowParallaxRead(e.target.checked)} className="w-4 h-4 accent-amber-600" />
+                Show parallax misreading 顯示視差錯讀線
+              </label>
+              <ul className="mt-4 text-sm text-slate-600 space-y-1.5 bg-slate-50 rounded-lg p-3">
+                <li>1. Place the cylinder upright on a bench.</li>
+                <li>2. Bring the eye level with the meniscus.</li>
+                <li>3. For water, read the <b>lowest</b> point of the curve.</li>
+                <li>4. Estimate to the nearest 0.5 cm³.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      );
+    };
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<MeniscusTool />);
+  </script>
+</body>
+</html>
