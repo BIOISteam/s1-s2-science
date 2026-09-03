@@ -1,311 +1,395 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Displacement Method Interactive Tool</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <style>
-    body { margin: 0; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Displacement Method Experiment</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 </head>
 <body>
-  <div id="root"></div>
+    <div id="root"></div>
 
-  <script type="text/babel">
-    const { useState, useEffect } = React;
+    <script type="text/babel">
+        const { useState, useEffect } = React;
 
-    const DisplacementTool = () => {
-      const [step, setStep] = useState(1);
-      const [stoneDepth, setStoneDepth] = useState(0);
-      const [stoneSize, setStoneSize] = useState(50);
-      const [isFlowing, setIsFlowing] = useState(false);
-      const [prevDepth, setPrevDepth] = useState(0);
-      const [canWaterOffset, setCanWaterOffset] = useState(60);
-      const [prepWaterVolume, setPrepWaterVolume] = useState(0);
+        const DisplacementTool = () => {
+            // Scenarios: 'stone' (sinking) or 'wood' (floating)
+            const [scenario, setScenario] = useState('stone');
+            
+            // Experiment Phases: 1 (Pour), 2 (Empty), 3 (Ready/Experiment)
+            const [step, setStep] = useState(1); 
+            
+            const [depth, setDepth] = useState(0); // 0 to 100
+            const [stoneSize, setStoneSize] = useState(50); // 0 to 100
+            const [woodSize, setWoodSize] = useState(50); // 0 to 100
+            
+            const [isFlowing, setIsFlowing] = useState(false);
+            const [prevDepth, setPrevDepth] = useState(0);
+            
+            // Preparation states
+            const [canWaterOffset, setCanWaterOffset] = useState(60); 
+            const [prepWaterVolume, setPrepWaterVolume] = useState(0); 
 
-      const baseWaterLevelY = 225;
-      const currentWaterLevelY = baseWaterLevelY + canWaterOffset - (isFlowing ? 3 : 0);
-      const stoneCenterY = 50 + (stoneDepth / 100) * 260;
-      const baseRadius = 20;
-      const actualRadius = baseRadius * (1 + stoneSize / 100);
-      const stoneBottomY = stoneCenterY + actualRadius;
-      const stoneTopY = stoneCenterY - actualRadius;
+            // --- Math and Physics calculations ---
+            const baseWaterLevelY = 225; 
+            const currentWaterLevelY = baseWaterLevelY + canWaterOffset - (isFlowing ? 3 : 0); 
+            
+            // Stone calculations
+            const stoneCenterY = 90 + (depth / 100) * 240; // Starts at 90, goes to 330
+            const stoneBaseRadius = 20;
+            const stoneRadius = stoneBaseRadius * (1 + stoneSize / 100);
+            
+            // Wood calculations (positioned above the stone)
+            const woodBaseRadius = 15;
+            const woodRadius = woodBaseRadius * (1 + woodSize / 100);
+            const offsetBetween = stoneRadius + woodRadius + 15;
+            const woodCenterY = stoneCenterY - offsetBetween;
 
-      let submergedRatio = 0;
-      if (stoneBottomY > baseWaterLevelY) {
-        if (stoneTopY >= baseWaterLevelY) {
-          submergedRatio = 1;
-        } else {
-          submergedRatio = (stoneBottomY - baseWaterLevelY) / (2 * actualRadius);
-        }
-      }
+            // Submerged Ratios
+            const getSubmergedRatio = (centerY, radius) => {
+                const bottomY = centerY + radius;
+                const topY = centerY - radius;
+                if (bottomY > baseWaterLevelY) {
+                    if (topY >= baseWaterLevelY) return 1;
+                    return (bottomY - baseWaterLevelY) / (2 * radius);
+                }
+                return 0;
+            };
 
-      const maxVolume = 30 + (stoneSize / 100) * 50;
-      const currentDisplacedVolume = submergedRatio * maxVolume;
-      const totalCylinderVolume = prepWaterVolume + currentDisplacedVolume;
-      const cylinderMaxVolume = 100;
-      const cylinderHeight = 180;
-      const waterInCylinderHeight = (totalCylinderVolume / cylinderMaxVolume) * cylinderHeight;
-      const cylinderWaterY = 480 - waterInCylinderHeight;
+            const stoneSubmergedRatio = getSubmergedRatio(stoneCenterY, stoneRadius);
+            const woodSubmergedRatio = scenario === 'wood' ? getSubmergedRatio(woodCenterY, woodRadius) : 0;
 
-      useEffect(() => {
-        if (step === 3 && stoneDepth > prevDepth && submergedRatio > 0 && submergedRatio < 1) {
-          setIsFlowing(true);
-        } else if (step === 3) {
-          const timeout = setTimeout(() => setIsFlowing(false), 200);
-          return () => clearTimeout(timeout);
-        }
-        setPrevDepth(stoneDepth);
-      }, [stoneDepth, submergedRatio, prevDepth, step]);
+            // Volumes
+            const stoneMaxVolume = 30 + (stoneSize / 100) * 50; // Max 80
+            const woodMaxVolume = 20 + (woodSize / 100) * 40;   // Max 60
+            
+            const currentDisplacedVolume = (stoneSubmergedRatio * stoneMaxVolume) + (woodSubmergedRatio * woodMaxVolume);
+            const totalCylinderVolume = prepWaterVolume + currentDisplacedVolume;
+            
+            // Cylinder visuals (Increased capacity to 150 to fit both objects)
+            const cylinderMaxVolume = 150; 
+            const cylinderHeight = 180;
+            const waterInCylinderHeight = (totalCylinderVolume / cylinderMaxVolume) * cylinderHeight;
+            const cylinderWaterY = 480 - waterInCylinderHeight; 
 
-      const handlePourWater = () => {
-        setCanWaterOffset(0);
-        setTimeout(() => {
-          setIsFlowing(true);
-          setTimeout(() => {
-            setPrepWaterVolume(12);
-            setIsFlowing(false);
-            setStep(2);
-          }, 800);
-        }, 600);
-      };
+            // Handle Flow Animation
+            useEffect(() => {
+                if (step === 3 && depth > prevDepth && currentDisplacedVolume > 0 && currentDisplacedVolume < (stoneMaxVolume + (scenario === 'wood' ? woodMaxVolume : 0))) {
+                    setIsFlowing(true);
+                } else if (step === 3) {
+                    const timeout = setTimeout(() => setIsFlowing(false), 200);
+                    return () => clearTimeout(timeout);
+                }
+                setPrevDepth(depth);
+            }, [depth, currentDisplacedVolume, prevDepth, step, scenario, stoneMaxVolume, woodMaxVolume]);
 
-      const handleEmptyCylinder = () => {
-        setPrepWaterVolume(0);
-        setStep(3);
-      };
+            // Actions
+            const handlePourWater = () => {
+                setCanWaterOffset(0); 
+                setTimeout(() => {
+                    setIsFlowing(true); 
+                    setTimeout(() => {
+                        setPrepWaterVolume(12); 
+                        setIsFlowing(false);
+                        setStep(2); 
+                    }, 800);
+                }, 600); 
+            };
 
-      const handleReset = () => {
-        setStep(1);
-        setStoneDepth(0);
-        setStoneSize(50);
-        setCanWaterOffset(60);
-        setPrepWaterVolume(0);
-        setIsFlowing(false);
-      };
+            const handleEmptyCylinder = () => {
+                setPrepWaterVolume(0);
+                setStep(3); 
+            };
 
-      return (
-        <div className="flex flex-col lg:flex-row gap-6 p-6 bg-gray-50 min-h-screen font-sans text-gray-800">
-          <div className="w-full lg:w-[65%] bg-white rounded-xl shadow-lg p-6 border border-gray-200 flex flex-col items-center">
-            <div className="w-full flex flex-col items-start mb-4">
-              <h2 className="text-2xl font-bold text-blue-800">Displacement Method Experiment</h2>
-              <h2 className="text-xl font-bold text-blue-600 mt-1">排水法實驗</h2>
-            </div>
+            const handleReset = () => {
+                setStep(1);
+                setDepth(0);
+                setCanWaterOffset(60);
+                setPrepWaterVolume(0);
+                setIsFlowing(false);
+            };
 
-            <div className="relative w-full h-[60vh] lg:h-[75vh] bg-blue-50/30 rounded-lg overflow-hidden border border-gray-100 flex justify-center items-center">
-              <svg viewBox="0 0 600 550" className="w-full h-full max-h-full">
-                <defs>
-                  <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="rgba(59, 130, 246, 0.4)" />
-                    <stop offset="100%" stopColor="rgba(37, 99, 235, 0.6)" />
-                  </linearGradient>
-                  <linearGradient id="stoneGrad" x1="0" y1="0" x2="1" y2="1">
-                    <stop offset="0%" stopColor="#6b7280" />
-                    <stop offset="100%" stopColor="#374151" />
-                  </linearGradient>
-                </defs>
+            const handleScenarioChange = (newScenario) => {
+                setScenario(newScenario);
+                handleReset();
+            };
 
-                <rect x="20" y="350" width="280" height="200" fill="#8B4513" rx="4" />
-                <rect x="20" y="350" width="280" height="15" fill="#A0522D" rx="4" />
-                <rect x="260" y="480" width="200" height="70" fill="#8B4513" rx="4" />
-                <rect x="260" y="480" width="200" height="15" fill="#A0522D" rx="4" />
+            return (
+                <div className="flex flex-col lg:flex-row gap-6 p-6 bg-gray-50 min-h-screen font-sans text-gray-800">
+                    
+                    {/* Left Column: Interactive Visualization */}
+                    <div className="w-full lg:w-[60%] bg-white rounded-xl shadow-lg p-6 border border-gray-200 flex flex-col items-center">
+                        <div className="w-full flex flex-col items-start mb-4">
+                            <h2 className="text-2xl font-bold text-blue-800">Displacement Method Experiment</h2>
+                            <h2 className="text-xl font-bold text-blue-600 mt-1">排水法實驗</h2>
+                        </div>
+                        
+                        <div className="relative w-full h-[60vh] lg:h-[75vh] bg-blue-50/30 rounded-lg overflow-hidden border border-gray-100 flex justify-center items-center">
+                            <svg viewBox="0 0 600 550" className="w-full h-full max-h-full">
+                                <defs>
+                                    <linearGradient id="waterGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0%" stopColor="rgba(59, 130, 246, 0.4)" />
+                                        <stop offset="100%" stopColor="rgba(37, 99, 235, 0.6)" />
+                                    </linearGradient>
+                                    <linearGradient id="stoneGrad" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0%" stopColor="#6b7280" />
+                                        <stop offset="100%" stopColor="#374151" />
+                                    </linearGradient>
+                                    <linearGradient id="woodGrad" x1="0" y1="0" x2="1" y2="1">
+                                        <stop offset="0%" stopColor="#A0522D" />
+                                        <stop offset="100%" stopColor="#8B4513" />
+                                    </linearGradient>
+                                </defs>
 
-                <rect x="102" y={currentWaterLevelY} width="146" height={348 - currentWaterLevelY} fill="url(#waterGrad)" className="transition-all duration-700 ease-in-out" />
+                                {/* Grounds */}
+                                <rect x="20" y="350" width="280" height="200" fill="#8B4513" rx="4" />
+                                <rect x="20" y="350" width="280" height="15" fill="#A0522D" rx="4" />
+                                <rect x="260" y="480" width="200" height="70" fill="#8B4513" rx="4" />
+                                <rect x="260" y="480" width="200" height="15" fill="#A0522D" rx="4" />
 
-                <path d="M 100 100 L 100 350 L 250 350 L 250 225 L 330 265 M 330 250 L 250 210 L 250 100" fill="none" stroke="#4b5563" strokeWidth="4" strokeLinejoin="round" />
+                                {/* Displacement Can Water */}
+                                <rect x="102" y={currentWaterLevelY} width="146" height={348 - currentWaterLevelY} fill="url(#waterGrad)" className="transition-all duration-700 ease-in-out" />
+                                
+                                {/* Displacement Can & Spout Outline (Open End) */}
+                                <path d="M 100 100 L 100 350 L 250 350 L 250 225 L 330 265 M 330 250 L 250 210 L 250 100" fill="none" stroke="#4b5563" strokeWidth="4" strokeLinejoin="round" />
+                                
+                                {/* Dynamic Flowing Water */}
+                                {isFlowing && (
+                                    <g className="animate-pulse">
+                                        <path d="M 250 222 Q 290 230 330 262 L 330 265 Q 290 235 250 225 Z" fill="rgba(59, 130, 246, 0.6)" />
+                                        {cylinderWaterY > 262 && (
+                                            <rect x="327" y="262" width="6" height={cylinderWaterY - 262} fill="rgba(59, 130, 246, 0.6)" />
+                                        )}
+                                    </g>
+                                )}
 
-                {isFlowing && (
-                  <g className="animate-pulse">
-                    <path d="M 250 222 Q 290 230 330 262 L 330 265 Q 290 235 250 225 Z" fill="rgba(59, 130, 246, 0.6)" />
-                    {cylinderWaterY > 262 && (
-                      <rect x="327" y="262" width="6" height={cylinderWaterY - 262} fill="rgba(59, 130, 246, 0.6)" />
-                    )}
-                  </g>
-                )}
+                                {/* Measuring Cylinder Water */}
+                                {waterInCylinderHeight > 0 && (
+                                    <rect x="312" y={cylinderWaterY} width="56" height={waterInCylinderHeight} fill="url(#waterGrad)" className="transition-all duration-300" />
+                                )}
 
-                {waterInCylinderHeight > 0 && (
-                  <rect x="312" y={cylinderWaterY} width="56" height={waterInCylinderHeight} fill="url(#waterGrad)" className="transition-all duration-300" />
-                )}
+                                {/* Measuring Cylinder Outline */}
+                                <path d="M 300 480 L 380 480 M 310 280 L 310 480 L 370 480 L 370 280" fill="none" stroke="#4b5563" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                                
+                                {/* Cylinder Ticks (15 ticks for 150ml) */}
+                                {[...Array(15)].map((_, i) => (
+                                    <line key={i} x1="310" y1={468 - i * 12} x2={i % 5 === 4 ? "325" : "318"} y2={468 - i * 12} stroke="#4b5563" strokeWidth="2" />
+                                ))}
 
-                <path d="M 300 480 L 380 480 M 310 280 L 310 480 L 370 480 L 370 280" fill="none" stroke="#4b5563" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+                                {/* String */}
+                                <line x1="175" y1="0" x2="175" y2={stoneCenterY} stroke="#9ca3af" strokeWidth="2" strokeDasharray="4 2" />
+                                
+                                {/* Hand holding string */}
+                                <path d="M 155 -10 Q 175 20 195 -10 Z" fill="#fcd34d" />
 
-                {[...Array(10)].map((_, i) => (
-                  <line key={i} x1="310" y1={464 - i * 18} x2="320" y2={464 - i * 18} stroke="#4b5563" strokeWidth="2" />
-                ))}
+                                {/* Wood (Only if scenario is wood) */}
+                                {scenario === 'wood' && (
+                                    <g transform={`translate(175, ${woodCenterY}) scale(${1 + woodSize / 100})`}>
+                                        <rect x="-15" y="-15" width="30" height="30" rx="3" fill="url(#woodGrad)" stroke="#5c2e0e" strokeWidth="2" />
+                                        <line x1="-10" y1="-5" x2="10" y2="-5" stroke="#7a3d12" strokeWidth="1" />
+                                        <line x1="-12" y1="5" x2="12" y2="5" stroke="#7a3d12" strokeWidth="1" />
+                                    </g>
+                                )}
 
-                <line x1="175" y1="0" x2="175" y2={stoneCenterY} stroke="#9ca3af" strokeWidth="2" strokeDasharray="4 2" />
-                <path d="M 155 -10 Q 175 20 195 -10 Z" fill="#fcd34d" />
+                                {/* Stone (Sinker) */}
+                                <g transform={`translate(175, ${stoneCenterY}) scale(${1 + stoneSize / 100})`}>
+                                    <path d="M 0 -22 C 15 -25 25 -10 22 5 C 20 20 5 25 -10 20 C -25 15 -25 -5 -15 -18 Z" fill="url(#stoneGrad)" />
+                                </g>
 
-                <g transform={`translate(175, ${stoneCenterY}) scale(${1 + stoneSize / 100})`}>
-                  <path d="M 0 -22 C 15 -25 25 -10 22 5 C 20 20 5 25 -10 20 C -25 15 -25 -5 -15 -18 Z" fill="url(#stoneGrad)" />
-                </g>
+                                {/* Bilingual Labels for Projector */}
+                                <text x="20" y="170" fill="#1f2937" fontSize="18" fontWeight="bold">Displacement Can</text>
+                                <text x="20" y="195" fill="#4b5563" fontSize="16" fontWeight="bold">排水杯</text>
+                                <line x1="80" y1="205" x2="130" y2="205" stroke="#374151" strokeWidth="2" />
 
-                <text x="20" y="170" fill="#1f2937" fontSize="18" fontWeight="bold">Displacement Can</text>
-                <text x="20" y="195" fill="#4b5563" fontSize="16" fontWeight="bold">排水杯</text>
-                <line x1="80" y1="205" x2="130" y2="205" stroke="#374151" strokeWidth="2" />
+                                <text x="410" y="380" fill="#1f2937" fontSize="18" fontWeight="bold">Measuring Cylinder</text>
+                                <text x="410" y="405" fill="#4b5563" fontSize="16" fontWeight="bold">量筒</text>
+                                <line x1="400" y1="390" x2="370" y2="390" stroke="#374151" strokeWidth="2" />
+                                
+                                <text x="390" y="150" fill="#1f2937" fontSize="18" fontWeight="bold">Spout</text>
+                                <text x="390" y="175" fill="#4b5563" fontSize="16" fontWeight="bold">壺嘴</text>
+                                <line x1="385" y1="185" x2="320" y2="230" stroke="#374151" strokeWidth="2" />
+                            </svg>
+                        </div>
+                    </div>
 
-                <text x="410" y="380" fill="#1f2937" fontSize="18" fontWeight="bold">Measuring Cylinder</text>
-                <text x="410" y="405" fill="#4b5563" fontSize="16" fontWeight="bold">量筒</text>
-                <line x1="400" y1="390" x2="370" y2="390" stroke="#374151" strokeWidth="2" />
+                    {/* Right Column: Controls and Instructions */}
+                    <div className="w-full lg:w-[40%] flex flex-col gap-4">
+                        
+                        {/* Scenario Selector */}
+                        <div className="bg-white rounded-xl shadow-lg p-4 border border-gray-200">
+                            <h3 className="text-base font-bold text-gray-800 mb-3 flex flex-col">
+                                <span>Select Object</span>
+                                <span className="text-sm text-gray-500 font-normal">選擇測量物體</span>
+                            </h3>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => handleScenarioChange('stone')}
+                                    className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors flex flex-col items-center justify-center border-2 ${scenario === 'stone' ? 'bg-blue-50 border-blue-500 text-blue-800' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                                >
+                                    <span>Sinking Object (Stone)</span>
+                                    <span className="font-normal mt-0.5">沉體 (石頭)</span>
+                                </button>
+                                <button 
+                                    onClick={() => handleScenarioChange('wood')}
+                                    className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors flex flex-col items-center justify-center border-2 ${scenario === 'wood' ? 'bg-amber-50 border-amber-600 text-amber-900' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'}`}
+                                >
+                                    <span>Floating Object (Wood)</span>
+                                    <span className="font-normal mt-0.5">浮體 (木塊)</span>
+                                </button>
+                            </div>
+                        </div>
 
-                <text x="390" y="150" fill="#1f2937" fontSize="18" fontWeight="bold">Spout</text>
-                <text x="390" y="175" fill="#4b5563" fontSize="16" fontWeight="bold">壺嘴</text>
-                <line x1="385" y1="185" x2="320" y2="230" stroke="#374151" strokeWidth="2" />
-              </svg>
-            </div>
-          </div>
+                        {/* Dynamic Instructions Panel */}
+                        <div className="bg-white rounded-xl shadow-lg p-5 border border-gray-200 flex-1">
+                            <h3 className="text-xl font-bold text-gray-800 mb-3 border-b pb-2">
+                                Instructions <span className="text-gray-500 text-lg ml-2">實驗步驟</span>
+                            </h3>
+                            
+                            {/* Common Prep Steps */}
+                            <ul className="space-y-2 text-sm text-gray-700">
+                                <li className={`flex gap-3 p-2 rounded-lg transition-colors ${step === 1 ? 'bg-blue-50 border border-blue-200' : ''}`}>
+                                    <span className={`font-bold ${step === 1 ? 'text-blue-600' : 'text-gray-500'}`}>1a.</span>
+                                    <div>
+                                        <span className={step === 1 ? 'text-blue-800 font-bold' : ''}>Pour water until it runs out of the spout.</span>
+                                        <span className={`block mt-0.5 text-xs ${step === 1 ? 'text-blue-700 font-semibold' : 'text-gray-500'}`}>將水倒入直到從壺嘴流出。</span>
+                                    </div>
+                                </li>
+                                <li className={`flex gap-3 p-2 rounded-lg transition-colors ${step === 2 ? 'bg-blue-50 border border-blue-200' : ''}`}>
+                                    <span className={`font-bold ${step === 2 ? 'text-blue-600' : 'text-gray-500'}`}>1b.</span>
+                                    <div>
+                                        <span className={step === 2 ? 'text-blue-800 font-bold' : ''}>Empty the measuring cylinder.</span>
+                                        <span className={`block mt-0.5 text-xs ${step === 2 ? 'text-blue-700 font-semibold' : 'text-gray-500'}`}>清空量筒。</span>
+                                    </div>
+                                </li>
 
-          <div className="w-full lg:w-[35%] flex flex-col gap-5">
-            <div className="bg-white rounded-xl shadow-lg p-5 border border-gray-200">
-              <h3 className="text-xl font-bold text-gray-800 mb-4 border-b pb-2">
-                Instructions <span className="text-gray-500 text-lg ml-2">實驗步驟</span>
-              </h3>
-              <ul className="space-y-3 text-base text-gray-700">
-                <li className={`flex gap-3 p-2 rounded-lg transition-colors ${step === 1 ? 'bg-blue-50 border border-blue-200' : ''}`}>
-                  <span className={`font-bold ${step === 1 ? 'text-blue-600' : 'text-gray-500'}`}>1a.</span>
-                  <div>
-                    <span className={step === 1 ? 'text-blue-800 font-bold' : ''}>Pour water into the displacement can until a little water runs out of the spout.</span>
-                    <span className={`block mt-1 text-sm ${step === 1 ? 'text-blue-700 font-semibold' : 'text-gray-500'}`}>將水倒入排水杯中，直到少許水從壺嘴流出。</span>
-                  </div>
-                </li>
-                <li className={`flex gap-3 p-2 rounded-lg transition-colors ${step === 2 ? 'bg-blue-50 border border-blue-200' : ''}`}>
-                  <span className={`font-bold ${step === 2 ? 'text-blue-600' : 'text-gray-500'}`}>1b.</span>
-                  <div>
-                    <span className={step === 2 ? 'text-blue-800 font-bold' : ''}>Remove the collected water from the measuring cylinder.</span>
-                    <span className={`block mt-1 text-sm ${step === 2 ? 'text-blue-700 font-semibold' : 'text-gray-500'}`}>移走量筒中收集到的水。</span>
-                  </div>
-                </li>
-                <li className={`flex gap-3 p-2 rounded-lg transition-colors ${step === 3 && stoneDepth === 0 ? 'bg-blue-50 border border-blue-200' : ''}`}>
-                  <span className={`font-bold ${step === 3 && stoneDepth === 0 ? 'text-blue-600' : 'text-gray-500'}`}>2.</span>
-                  <div>
-                    <span className={step === 3 && stoneDepth === 0 ? 'text-blue-800 font-bold' : ''}>Slowly lower the stone into the water.</span>
-                    <span className={`block mt-1 text-sm ${step === 3 && stoneDepth === 0 ? 'text-blue-700 font-semibold' : 'text-gray-500'}`}>慢慢將石頭放入排水杯的水中。</span>
-                  </div>
-                </li>
-                <li className={`flex gap-3 p-2 rounded-lg transition-colors ${step === 3 && stoneDepth > 0 ? 'bg-blue-50 border border-blue-200' : ''}`}>
-                  <span className={`font-bold ${step === 3 && stoneDepth > 0 ? 'text-blue-600' : 'text-gray-500'}`}>3.</span>
-                  <div>
-                    <span className={step === 3 && stoneDepth > 0 ? 'text-blue-800 font-bold' : ''}>Observe the water being displaced into the measuring cylinder.</span>
-                    <span className={`block mt-1 text-sm ${step === 3 && stoneDepth > 0 ? 'text-blue-700 font-semibold' : 'text-gray-500'}`}>觀察水被排出並流入量筒中。</span>
-                  </div>
-                </li>
-              </ul>
+                                {/* Conditional Steps based on Scenario */}
+                                {scenario === 'stone' ? (
+                                    <>
+                                        <li className={`flex gap-3 p-2 rounded-lg transition-colors ${step === 3 ? 'bg-blue-50 border border-blue-200' : ''}`}>
+                                            <span className={`font-bold ${step === 3 ? 'text-blue-600' : 'text-gray-500'}`}>2.</span>
+                                            <div>
+                                                <span className={step === 3 ? 'text-blue-800 font-bold' : ''}>Lower the stone into the water and observe the displaced volume.</span>
+                                                <span className={`block mt-0.5 text-xs ${step === 3 ? 'text-blue-700 font-semibold' : 'text-gray-500'}`}>將石頭放入水中並觀察排出的體積。</span>
+                                            </div>
+                                        </li>
+                                    </>
+                                ) : (
+                                    <>
+                                        <li className={`flex gap-3 p-2 rounded-lg transition-colors ${step === 3 && stoneSubmergedRatio < 1 ? 'bg-blue-50 border border-blue-200' : ''}`}>
+                                            <span className={`font-bold ${step === 3 && stoneSubmergedRatio < 1 ? 'text-blue-600' : 'text-gray-500'}`}>2.</span>
+                                            <div>
+                                                <span className={step === 3 && stoneSubmergedRatio < 1 ? 'text-blue-800 font-bold' : ''}>Lower the sinker (stone) fully into the water. Record volume (V₁).</span>
+                                                <span className={`block mt-0.5 text-xs ${step === 3 && stoneSubmergedRatio < 1 ? 'text-blue-700 font-semibold' : 'text-gray-500'}`}>將沉體(石頭)完全沒入水中。記錄體積(V₁)。</span>
+                                            </div>
+                                        </li>
+                                        <li className={`flex gap-3 p-2 rounded-lg transition-colors ${step === 3 && stoneSubmergedRatio === 1 && woodSubmergedRatio < 1 ? 'bg-blue-50 border border-blue-200' : ''}`}>
+                                            <span className={`font-bold ${step === 3 && stoneSubmergedRatio === 1 && woodSubmergedRatio < 1 ? 'text-blue-600' : 'text-gray-500'}`}>3.</span>
+                                            <div>
+                                                <span className={step === 3 && stoneSubmergedRatio === 1 && woodSubmergedRatio < 1 ? 'text-blue-800 font-bold' : ''}>Continue lowering until the wood is submerged. Record total volume (V₂).</span>
+                                                <span className={`block mt-0.5 text-xs ${step === 3 && stoneSubmergedRatio === 1 && woodSubmergedRatio < 1 ? 'text-blue-700 font-semibold' : 'text-gray-500'}`}>繼續放下直到木塊沒入水中。記錄總體積(V₂)。</span>
+                                            </div>
+                                        </li>
+                                    </>
+                                )}
+                            </ul>
+                            
+                            {/* Dynamic Conclusion Box */}
+                            <div className="mt-4 p-4 bg-green-50 rounded-xl border-2 border-green-300 text-center shadow-sm">
+                                {scenario === 'stone' ? (
+                                    <>
+                                        <p className="font-extrabold text-green-800 text-base lg:text-lg">Volume of Stone = Displaced Water</p>
+                                        <p className="font-bold text-green-700 text-sm lg:text-base mt-1">石頭體積 = 排出的水體積</p>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="font-extrabold text-green-800 text-base lg:text-lg">Volume of Wood = V₂ - V₁</p>
+                                        <p className="font-bold text-green-700 text-sm lg:text-base mt-1">木塊體積 = 總體積(V₂) - 沉體體積(V₁)</p>
+                                    </>
+                                )}
+                            </div>
+                        </div>
 
-              <div className="mt-6 p-5 bg-green-50 rounded-xl border-2 border-green-300 text-center shadow-sm">
-                <p className="font-extrabold text-green-800 text-lg lg:text-xl">
-                  Volume of the stone = Volume of water collected (displaced)
-                </p>
-                <p className="font-bold text-green-700 text-base lg:text-lg mt-2">
-                  石頭體積 = 收集到的（排出的）水體積
-                </p>
-              </div>
-            </div>
+                        {/* Controls */}
+                        <div className="bg-white rounded-xl shadow-lg p-5 border border-gray-200">
+                            
+                            {/* Prep Buttons */}
+                            <div className="flex gap-3 mb-5">
+                                <button onClick={handlePourWater} disabled={step !== 1} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors flex flex-col items-center ${step === 1 ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                    <span>Pour Water</span><span className="text-xs font-normal">倒入水</span>
+                                </button>
+                                <button onClick={handleEmptyCylinder} disabled={step !== 2} className={`flex-1 py-2 rounded-lg font-bold text-sm transition-colors flex flex-col items-center ${step === 2 ? 'bg-red-500 hover:bg-red-600 text-white' : 'bg-gray-100 text-gray-400'}`}>
+                                    <span>Empty Cylinder</span><span className="text-xs font-normal">清空量筒</span>
+                                </button>
+                            </div>
 
-            <div className="bg-white rounded-xl shadow-lg p-5 border border-gray-200">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2">
-                Preparation Phase <span className="text-gray-500 text-base ml-2">準備階段</span>
-              </h3>
-              <div className="flex gap-4">
-                <button
-                  onClick={handlePourWater}
-                  disabled={step !== 1}
-                  className={`flex-1 py-3 rounded-lg font-bold text-base transition-colors flex flex-col items-center justify-center ${step === 1 ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
-                >
-                  <span>Pour Water</span>
-                  <span className="text-sm font-normal mt-0.5">倒入水</span>
-                </button>
-                <button
-                  onClick={handleEmptyCylinder}
-                  disabled={step !== 2}
-                  className={`flex-1 py-3 rounded-lg font-bold text-base transition-colors flex flex-col items-center justify-center ${step === 2 ? 'bg-red-500 hover:bg-red-600 text-white shadow-md' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}
-                >
-                  <span>Empty Cylinder</span>
-                  <span className="text-sm font-normal mt-0.5">清空量筒</span>
-                </button>
-              </div>
-            </div>
+                            {/* Sliders */}
+                            <div className={`space-y-4 ${step < 3 ? 'opacity-50 pointer-events-none' : ''}`}>
+                                <div>
+                                    <div className="flex justify-between items-end mb-1">
+                                        <label className="text-sm font-bold text-gray-700 flex flex-col">
+                                            <span>Lower Objects</span><span className="text-xs text-gray-500 font-normal">放下物體</span>
+                                        </label>
+                                    </div>
+                                    <input type="range" min="0" max="100" value={depth} onChange={(e) => setDepth(Number(e.target.value))} disabled={step < 3} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600" />
+                                </div>
 
-            <div className="bg-white rounded-xl shadow-lg p-5 border border-gray-200">
-              <h3 className="text-lg font-bold text-gray-800 mb-4 border-b pb-2 flex items-center flex-wrap gap-2">
-                <span>Experiment Phase</span>
-                <span className="text-gray-500 text-base">實驗階段</span>
-                {step < 3 && <span className="text-xs font-normal text-red-500 w-full">(Complete preparation first / 請先完成準備階段)</span>}
-              </h3>
+                                <div className="flex gap-4">
+                                    <div className="flex-1">
+                                        <label className="text-xs font-bold text-gray-700 flex flex-col mb-1">
+                                            <span>Sinker Size</span><span className="text-[10px] text-gray-500 font-normal">沉體大小</span>
+                                        </label>
+                                        <input type="range" min="0" max="100" value={stoneSize} onChange={(e) => { setStoneSize(Number(e.target.value)); if(depth > 0) setDepth(0); }} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-gray-600" />
+                                    </div>
+                                    {scenario === 'wood' && (
+                                        <div className="flex-1">
+                                            <label className="text-xs font-bold text-gray-700 flex flex-col mb-1">
+                                                <span>Wood Size</span><span className="text-[10px] text-gray-500 font-normal">木塊大小</span>
+                                            </label>
+                                            <input type="range" min="0" max="100" value={woodSize} onChange={(e) => { setWoodSize(Number(e.target.value)); if(depth > 0) setDepth(0); }} className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-amber-700" />
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
 
-              <div className="space-y-6">
-                <div className={step < 3 ? 'opacity-50 pointer-events-none' : ''}>
-                  <div className="flex justify-between items-end mb-2">
-                    <label className="text-base font-bold text-gray-700 flex flex-col">
-                      <span>Lower the Stone</span>
-                      <span className="text-sm text-gray-500 font-normal">放下石頭</span>
-                    </label>
-                    <span className="text-base font-bold text-gray-500">{stoneDepth}%</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={stoneDepth}
-                    onChange={(e) => setStoneDepth(Number(e.target.value))}
-                    disabled={step < 3}
-                    className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-blue-600"
-                  />
+                            {/* Live Data Display */}
+                            {scenario === 'stone' ? (
+                                <div className="grid grid-cols-2 gap-3 mt-5">
+                                    <div className="bg-gray-50 p-2 rounded-xl border border-gray-200 text-center">
+                                        <p className="text-xs font-bold text-gray-600">Stone Volume <span className="block font-normal text-gray-500">石頭體積</span></p>
+                                        <p className="text-xl font-black text-gray-800 mt-1">{stoneMaxVolume.toFixed(1)} <span className="text-sm font-normal">cm³</span></p>
+                                    </div>
+                                    <div className="bg-blue-50 p-2 rounded-xl border border-blue-200 text-center">
+                                        <p className="text-xs font-bold text-blue-700">Water Volume <span className="block font-normal text-blue-600">水體積</span></p>
+                                        <p className="text-xl font-black text-blue-800 mt-1">{totalCylinderVolume.toFixed(1)} <span className="text-sm font-normal">cm³</span></p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-3 gap-2 mt-5">
+                                    <div className="bg-gray-50 p-2 rounded-lg border border-gray-200 text-center">
+                                        <p className="text-[10px] font-bold text-gray-600">Sinker (V₁) <span className="block font-normal text-gray-500">沉體體積</span></p>
+                                        <p className="text-lg font-black text-gray-800 mt-1">{stoneMaxVolume.toFixed(1)}</p>
+                                    </div>
+                                    <div className="bg-blue-50 p-2 rounded-lg border border-blue-200 text-center">
+                                        <p className="text-[10px] font-bold text-blue-700">Total (V₂) <span className="block font-normal text-blue-600">總水體積</span></p>
+                                        <p className="text-lg font-black text-blue-800 mt-1">{totalCylinderVolume.toFixed(1)}</p>
+                                    </div>
+                                    <div className="bg-amber-50 p-2 rounded-lg border border-amber-200 text-center">
+                                        <p className="text-[10px] font-bold text-amber-800">Wood (V₂-V₁) <span className="block font-normal text-amber-700">木塊體積</span></p>
+                                        <p className="text-lg font-black text-amber-900 mt-1">{Math.max(0, totalCylinderVolume - stoneMaxVolume).toFixed(1)}</p>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
                 </div>
+            );
+        };
 
-                <div>
-                  <div className="flex justify-between items-end mb-2">
-                    <label className="text-base font-bold text-gray-700 flex flex-col">
-                      <span>Stone Size</span>
-                      <span className="text-sm text-gray-500 font-normal">石頭大小</span>
-                    </label>
-                    <span className="text-base font-bold text-gray-500">{maxVolume.toFixed(1)} cm³</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={stoneSize}
-                    onChange={(e) => {
-                      setStoneSize(Number(e.target.value));
-                      if (stoneDepth > 0) setStoneDepth(0);
-                    }}
-                    className="w-full h-3 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-green-600"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div className="bg-gray-50 p-3 rounded-xl border-2 border-gray-200 text-center flex flex-col justify-center">
-                    <p className="text-sm font-bold text-gray-600 tracking-wide">Stone Volume</p>
-                    <p className="text-xs font-normal text-gray-500 mb-1">石頭體積</p>
-                    <p className="text-2xl font-black text-gray-800">{maxVolume.toFixed(1)} <span className="text-base font-normal">cm³</span></p>
-                  </div>
-                  <div className="bg-blue-50 p-3 rounded-xl border-2 border-blue-200 text-center flex flex-col justify-center">
-                    <p className="text-sm font-bold text-blue-700 tracking-wide">Water Volume</p>
-                    <p className="text-xs font-normal text-blue-600 mb-1">水體積</p>
-                    <p className="text-2xl font-black text-blue-800">{totalCylinderVolume.toFixed(1)} <span className="text-base font-normal">cm³</span></p>
-                  </div>
-                </div>
-
-                <button
-                  onClick={handleReset}
-                  className="w-full py-3 mt-2 bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold rounded-lg transition-colors text-base border border-gray-300 flex justify-center items-center gap-2"
-                >
-                  <span>Reset Experiment</span>
-                  <span className="text-sm font-normal text-gray-600">重置實驗</span>
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    };
-
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<DisplacementTool />);
-  </script>
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<DisplacementTool />);
+    </script>
 </body>
 </html>
