@@ -1,0 +1,50 @@
+{
+  "chapter": "Chapter 1 — Introduction to Science",
+  "chapterSlug": "ch1-intro",
+  "uiLanguage": "en",
+  "scopeThisPass": ["1.1", "1.2"],
+  "plannedSubtopics": [
+    { "id": "1.1", "label": "1.1", "title": "Identify the steps of scientific investigation" },
+    { "id": "1.2", "label": "1.2", "title": "Distinguish variables" },
+    { "id": "1.3", "label": "1.3", "title": "Hazard warning symbols & lab safety", "needsPhotos": true, "deferred": true },
+    { "id": "1.4", "label": "1.4", "title": "Apparatus & cross-sectional diagrams", "needsPhotos": true, "deferred": true },
+    { "id": "1.5", "label": "1.5", "title": "Measurement", "deferred": true },
+    { "id": "1.6", "label": "1.6", "title": "Structure and usage of the Bunsen burner", "deferred": true },
+    { "id": "1.7", "label": "1.7", "title": "Invention VS discovery & branch of science & other scientific investigation", "deferred": true }
+  ],
+  "formatTarget": "create-quiz quizData.js + quiz.html (ES module; uploadable / linkable from IS Quiz tab)",
+  "images": [],
+  "sources": [
+    {
+      "id": "S001",
+      "file": "ss-repeat-measurements.png",
+      "type": "screenshot-mcq",
+      "notes": "Ready MCQ on repeating measurements / averages / accuracy"
+    },
+    {
+      "id": "S002",
+      "file": "ss-plant-growth-scenario.png",
+      "type": "worksheet-long",
+      "notes": "Plant Growth and Light scenario — 6 investigation stages (convert to MC)"
+    },
+    {
+      "id": "S003",
+      "file": "ss-screen-time-variables.png",
+      "type": "worksheet-long",
+      "notes": "Screen time vs eye strain — IV/DV choose-slash (convert to MC)"
+    },
+    {
+      "id": "S004",
+      "file": "../../flashcards.json",
+      "type": "flashcards",
+      "notes": "Chapter flashcards — step list + IV/DV definitions"
+    }
+  ],
+  "answerKey": "none-provided — answers inferred from worksheet intent + flashcards",
+  "userNotes": {
+    "transformLongToMcq": true,
+    "separateQuizzesPerSubtopic": true,
+    "questionsPerQuiz": 5,
+    "photosFor11And12": false
+  }
+}
