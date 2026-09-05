@@ -1,0 +1,23 @@
+[
+  {
+    "id": "1.1",
+    "label": "1.1",
+    "labelZh": "1.1",
+    "title": "Identify the steps of scientific investigation",
+    "stageLabels": [
+      "Observation",
+      "Asking a question",
+      "Hypothesis",
+      "Designing and performing an experiment",
+      "Data processing and analysis",
+      "Drawing a conclusion"
+    ],
+    "stageLabelRationale": "Use worksheet long names (Scenario 1) rather than the shorter flashcard list — matches source wording and covers more distinct investigation stages for MC distractors."
+  },
+  {
+    "id": "1.2",
+    "label": "1.2",
+    "labelZh": "1.2",
+    "title": "Distinguish variables"
+  }
+]

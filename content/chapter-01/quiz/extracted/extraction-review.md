@@ -59,12 +59,15 @@
 |----|------|--------|
 | Q011 | If we do not repeat measurements and take averages… | **B** — errors may affect accuracy |
 
-## Gaps / decisions needed from you
+## Decisions (confirmed)
 
-1. **Stage wording** for 1.1 — use worksheet labels (*Observation / Asking a question / Hypothesis / Designing and performing an experiment / Data processing and analysis / Drawing a conclusion*), or flashcard shorter list (*Identify a problem, form a hypothesis, …*)?
-2. **Q011** — keep out of this pass (recommend), or squeeze into 1.1 as a 6th / replace one stage item?
-3. **Q010** — prefer “which is a controlled variable?” or “definition of independent variable?”
+| Item | Choice |
+|------|--------|
+| Inventory | OK |
+| 1.1 stage labels | **Worksheet long names** (agent decision — matches source + richer MC distractors) |
+| Q011 | **Out** this pass; add later with 1.5 / rest of Ch 1 |
+| Q010 | **Controlled variable** |
 
 ## Next
 
-Confirm this inventory (or correct). Then Step 3 = section ids `1.1` / `1.2` mapping only.
+Confirm Step 3 section mapping below, then Step 4 draft bank.
