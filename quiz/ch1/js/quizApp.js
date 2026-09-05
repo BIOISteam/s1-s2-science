@@ -2,8 +2,6 @@ import { QUIZ_ITEMS, QUIZ_SECTIONS } from "./quizData.js";
 import { sectionLabel, renderSessionSummary } from "./quizSummary.js";
 import { downloadWord, printSheet } from "./quizExport.js";
 import {
-  DIFFICULTY_LEVELS,
-  difficultyLevel,
   seededShuffle,
   escHtml,
   modelAnswerText,
@@ -58,7 +56,7 @@ const UI = {
     alertNoFormats: "Select at least one question type.",
     alertNoMatch: "No questions match your filters.",
     alertPoolLimited:
-      "Only {available} question(s) match your topics, question types, and difficulty (you asked for {requested}). Questions were not repeated.",
+      "Only {available} question(s) match your topics and question types (you asked for {requested}). Questions were not repeated.",
     progressNone: "No session yet",
     progressCompletedPrefix: "Completed ",
     correct: "Correct.",
@@ -78,11 +76,11 @@ const UI = {
     summaryByTypeColFirst: "First-try / in topic",
     revTitle: "Comments & revision suggestions",
     revBandExcellent:
-      "Overall accuracy is very high. Keep practising independent, dependent, and controlled variables with new scenarios.",
-    revBandGood: "Good result. Revisit any weaker variable type, then regenerate.",
-    revBandFair: "Mixed performance: re-read the screen-time and plant experiments and label IV, DV, and controlled variables.",
+      "Overall accuracy is very high. Keep practising investigation stages and variables together.",
+    revBandGood: "Good result. Use the topic filter to drill any weaker of 1.1 or 1.2, then regenerate.",
+    revBandFair: "Mixed performance: re-read the plant growth scenario for stages and variables.",
     revBandLow:
-      "Several variable ideas need consolidation. Review: independent = changed, dependent = measured, controlled = kept the same.",
+      "Several ideas need consolidation. Review investigation stages (1.1) and IV / DV / controlled variables (1.2).",
     revWeakOne: "Prioritise revision on {type} — you scored {c}/{t} ({pct}%) in that topic.",
     revStrongOne: "Strength: every {type} item correct ({n} questions).",
     revTwoStrike: "Questions missed twice: study the model answers, then regenerate those topics.",
@@ -230,7 +228,6 @@ export function initQuiz() {
     formatChecks: document.getElementById("quiz-format-checks"),
     bankSummary: document.getElementById("quiz-bank-summary"),
     numCount: document.getElementById("quiz-num-count"),
-    selDiff: document.getElementById("quiz-sel-diff"),
     txtSeed: document.getElementById("quiz-txt-seed"),
     quizArea: document.getElementById("quiz-area"),
     summaryPanel: document.getElementById("summary-panel"),
@@ -291,7 +288,7 @@ export function initQuiz() {
     return {
       sections: selectedSections(),
       formats: selectedFormats(),
-      difficulty: els.selDiff?.value || "all",
+      difficulty: "all",
     };
   }
 
@@ -379,22 +376,13 @@ export function initQuiz() {
     panel.dataset.bankListeners = "1";
     panel.addEventListener("change", (e) => {
       const t = e.target;
-      if (
-        t?.matches?.("#quiz-type-checks input, #quiz-format-checks input") ||
-        t?.id === "quiz-sel-diff"
-      ) {
+      if (t?.matches?.("#quiz-type-checks input, #quiz-format-checks input")) {
         updateBankSummary();
       }
     });
   }
 
   function initMeta() {
-    if (els.selDiff) {
-      els.selDiff.innerHTML = DIFFICULTY_LEVELS.map(
-        (d) =>
-          `<option value="${d.id}">${isChineseUI(lang) ? d.labelZh : d.labelEn}</option>`
-      ).join("");
-    }
     if (els.typeChecks) {
       els.typeChecks.innerHTML = QUIZ_SECTIONS.map((sec) => {
         const label = isChineseUI(lang) ? sec.labelZh : sec.label;
@@ -438,14 +426,13 @@ export function initQuiz() {
       alert(t("alertNoFormats"));
       return;
     }
-    const count = Math.min(50, Math.max(1, Number(els.numCount?.value) || 10));
-    const diffFilter = els.selDiff?.value || "all";
+    const count = Math.min(50, Math.max(1, Number(els.numCount?.value) || 5));
     const seed = els.txtSeed?.value || "";
 
     const pool = filterQuizPool(QUIZ_ITEMS, {
       sections,
       formats,
-      difficulty: diffFilter,
+      difficulty: "all",
     });
     if (!pool.length) {
       alert(t("alertNoMatch"));
@@ -533,9 +520,7 @@ export function initQuiz() {
         " · " +
         sectionLabel(q.section, lang).toUpperCase() +
         " · " +
-        formatTypeLabel(q) +
-        " · " +
-        q.difficulty.toUpperCase();
+        formatTypeLabel(q);
       wrap.appendChild(head);
 
       if (q.image?.src) {
