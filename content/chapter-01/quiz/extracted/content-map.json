@@ -1,0 +1,203 @@
+{
+  "textBlocks": [
+    {
+      "id": "T001",
+      "source": "S001",
+      "kind": "mcq-stem",
+      "text": "What happens if we do not repeat measurements and take averages in an experiment?"
+    },
+    {
+      "id": "T002",
+      "source": "S001",
+      "kind": "mcq-options",
+      "text": "A more reliable / B errors may affect accuracy / C total weight increases / D automatically valid"
+    },
+    {
+      "id": "T003",
+      "source": "S002",
+      "kind": "scenario-title",
+      "text": "Scenario 1: Plant Growth and Light"
+    },
+    {
+      "id": "T004",
+      "source": "S002",
+      "kind": "stage-observation",
+      "text": "You notice that the plants near the window grow faster than those far from the window.",
+      "mappedStage": "Observation"
+    },
+    {
+      "id": "T005",
+      "source": "S002",
+      "kind": "stage-question",
+      "text": "You start to wonder why the plants near the window grow faster?",
+      "mappedStage": "Asking a question"
+    },
+    {
+      "id": "T006",
+      "source": "S002",
+      "kind": "stage-hypothesis",
+      "text": "You think, maybe more sunlight allows plants to grow faster.",
+      "mappedStage": "Hypothesis"
+    },
+    {
+      "id": "T007",
+      "source": "S002",
+      "kind": "stage-experiment",
+      "text": "You decide to place two identical plants, one near the window and one inside the room, giving both the same water and fertilizer, and record their heights each week.",
+      "mappedStage": "Designing and performing an experiment",
+      "variablesHint": {
+        "independent": "location / amount of light (near window vs inside room)",
+        "dependent": "plant height",
+        "controlled": ["identical plants", "same water", "same fertilizer"]
+      }
+    },
+    {
+      "id": "T008",
+      "source": "S002",
+      "kind": "stage-data",
+      "text": "You organize the weekly plant heights into a table and plot a growth curve.",
+      "mappedStage": "Data processing and analysis"
+    },
+    {
+      "id": "T009",
+      "source": "S002",
+      "kind": "stage-conclusion",
+      "text": "You find that the plant near the window grows noticeably taller, so you make a conclusion based on the data.",
+      "mappedStage": "Drawing a conclusion"
+    },
+    {
+      "id": "T010",
+      "source": "S003",
+      "kind": "research-question",
+      "text": "Does the Amount of Screen Time Affect Eye Strain?"
+    },
+    {
+      "id": "T011",
+      "source": "S003",
+      "kind": "variable-pair",
+      "independent": "Duration of screen time",
+      "dependent": "Level of eye strain"
+    },
+    {
+      "id": "T012",
+      "source": "S004",
+      "kind": "definition",
+      "text": "Main steps: Identify a problem, form a hypothesis, design and carry out an experiment, collect and analyse data, and draw a conclusion."
+    },
+    {
+      "id": "T013",
+      "source": "S004",
+      "kind": "definition",
+      "text": "Independent variable: changed deliberately. Dependent variable: measured or observed."
+    }
+  ],
+  "figures": [
+    {
+      "id": "G001",
+      "source": "S002",
+      "linkedQuestion": null,
+      "note": "Windowsill plants photo in worksheet — not needed for 1.1/1.2 MC (user: no photos this pass)"
+    }
+  ],
+  "draftQuestions": [
+    {
+      "id": "Q001",
+      "target": "1.1",
+      "format": "mcq",
+      "from": ["T004"],
+      "plan": "Convert: which stage is 'notice plants near window grow faster' → Observation",
+      "answerInferred": "Observation",
+      "hasAnswer": true
+    },
+    {
+      "id": "Q002",
+      "target": "1.1",
+      "format": "mcq",
+      "from": ["T006"],
+      "plan": "Convert: 'maybe more sunlight…' → Hypothesis",
+      "answerInferred": "Hypothesis",
+      "hasAnswer": true
+    },
+    {
+      "id": "Q003",
+      "target": "1.1",
+      "format": "mcq",
+      "from": ["T007"],
+      "plan": "Convert: placing two plants / same water & fertilizer / record heights → Designing and performing an experiment",
+      "answerInferred": "Designing and performing an experiment",
+      "hasAnswer": true
+    },
+    {
+      "id": "Q004",
+      "target": "1.1",
+      "format": "mcq",
+      "from": ["T008"],
+      "plan": "Convert: table + growth curve → Data processing and analysis",
+      "answerInferred": "Data processing and analysis",
+      "hasAnswer": true
+    },
+    {
+      "id": "Q005",
+      "target": "1.1",
+      "format": "mcq",
+      "from": ["T009", "T012"],
+      "plan": "Convert: taller plant + conclude from data → Drawing a conclusion (or order-of-steps item)",
+      "answerInferred": "Drawing a conclusion",
+      "hasAnswer": true
+    },
+    {
+      "id": "Q006",
+      "target": "1.2",
+      "format": "mcq",
+      "from": ["T010", "T011"],
+      "plan": "Screen time scenario — identify independent variable",
+      "answerInferred": "Duration of screen time",
+      "hasAnswer": true
+    },
+    {
+      "id": "Q007",
+      "target": "1.2",
+      "format": "mcq",
+      "from": ["T010", "T011"],
+      "plan": "Screen time scenario — identify dependent variable",
+      "answerInferred": "Level of eye strain",
+      "hasAnswer": true
+    },
+    {
+      "id": "Q008",
+      "target": "1.2",
+      "format": "mcq",
+      "from": ["T007"],
+      "plan": "Plant scenario — independent variable (light / location)",
+      "answerInferred": "Amount of light / plant location",
+      "hasAnswer": true
+    },
+    {
+      "id": "Q009",
+      "target": "1.2",
+      "format": "mcq",
+      "from": ["T007"],
+      "plan": "Plant scenario — dependent variable (height)",
+      "answerInferred": "Plant height",
+      "hasAnswer": true
+    },
+    {
+      "id": "Q010",
+      "target": "1.2",
+      "format": "mcq",
+      "from": ["T007", "T013"],
+      "plan": "Plant scenario — controlled variable (water / fertilizer / identical plants) OR definition of IV/DV",
+      "answerInferred": "e.g. amount of water (controlled)",
+      "hasAnswer": true
+    },
+    {
+      "id": "Q011",
+      "target": "1.5-or-1.1",
+      "format": "mcq",
+      "from": ["T001", "T002"],
+      "plan": "Keep ready MCQ on repeating measurements. Better fit Measurement (1.5); optional spare for 1.1 if you want a 'fair test / reliability' item. Not counted in 1.1×5 / 1.2×5 unless you say so.",
+      "answerInferred": "B",
+      "hasAnswer": true
+    }
+  ]
+}
