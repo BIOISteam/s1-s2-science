@@ -68,9 +68,9 @@ export function downloadWord(questions, answersMode, lang) {
     return;
   }
   const titleEn = answersMode
-    ? "Ch 1 · 1.1 Steps of scientific investigation — Answers"
-    : "Ch 1 · 1.1 Steps of scientific investigation — Questions";
-  const titleZh = answersMode ? "第一章 1.1 科學探究步驟 — 答案" : "第一章 1.1 科學探究步驟 — 試題";
+    ? "Chapter 1 — Introduction to Science — Answers"
+    : "Chapter 1 — Introduction to Science — Questions";
+  const titleZh = answersMode ? "第一章 科學導論 — 答案" : "第一章 科學導論 — 試題";
   const body = buildDocBody(questions, answersMode);
   const html =
     '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">' +
@@ -80,7 +80,7 @@ export function downloadWord(questions, answersMode, lang) {
   const a = document.createElement("a");
   const ts = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
   a.href = URL.createObjectURL(blob);
-  a.download = (answersMode ? "ch1_1-1_answers_" : "ch1_1-1_questions_") + ts + ".doc";
+  a.download = (answersMode ? "ch1_answers_" : "ch1_questions_") + ts + ".doc";
   a.click();
   URL.revokeObjectURL(a.href);
 }
@@ -93,8 +93,8 @@ export function printSheet(questions, answersMode, lang) {
   const sheet = document.getElementById("quiz-pdf-sheet");
   if (!sheet) return;
   const titleEn = answersMode
-    ? "Ch 1 · 1.1 Steps of scientific investigation (Answers)"
-    : "Ch 1 · 1.1 Steps of scientific investigation (Questions)";
+    ? "Chapter 1 — Introduction to Science (Answers)"
+    : "Chapter 1 — Introduction to Science (Questions)";
   let html = `<h1>${escHtml(titleEn)}</h1>`;
   html += buildDocBody(questions, answersMode);
   sheet.innerHTML = html;
