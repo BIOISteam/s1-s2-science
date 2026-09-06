@@ -3,21 +3,42 @@
     "id": "1.1",
     "label": "1.1",
     "labelZh": "1.1",
-    "title": "Identify the steps of scientific investigation",
-    "stageLabels": [
-      "Observation",
-      "Asking a question",
-      "Hypothesis",
-      "Designing and performing an experiment",
-      "Data processing and analysis",
-      "Drawing a conclusion"
-    ],
-    "stageLabelRationale": "Use worksheet long names (Scenario 1) rather than the shorter flashcard list — matches source wording and covers more distinct investigation stages for MC distractors."
+    "title": "Identify the steps of scientific investigation"
   },
   {
     "id": "1.2",
     "label": "1.2",
     "labelZh": "1.2",
     "title": "Distinguish variables"
+  },
+  {
+    "id": "1.3",
+    "label": "1.3",
+    "labelZh": "1.3",
+    "title": "Hazard warning symbols & lab safety"
+  },
+  {
+    "id": "1.4",
+    "label": "1.4",
+    "labelZh": "1.4",
+    "title": "Apparatus & cross-sectional diagrams"
+  },
+  {
+    "id": "1.5",
+    "label": "1.5",
+    "labelZh": "1.5",
+    "title": "Measurement"
+  },
+  {
+    "id": "1.6",
+    "label": "1.6",
+    "labelZh": "1.6",
+    "title": "Structure and usage of the Bunsen burner"
+  },
+  {
+    "id": "1.7",
+    "label": "1.7",
+    "labelZh": "1.7",
+    "title": "Invention VS discovery; branches of science; other scientific investigation"
   }
 ]

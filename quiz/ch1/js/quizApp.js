@@ -76,11 +76,11 @@ const UI = {
     summaryByTypeColFirst: "First-try / in topic",
     revTitle: "Comments & revision suggestions",
     revBandExcellent:
-      "Overall accuracy is very high. Keep practising investigation stages and variables together.",
-    revBandGood: "Good result. Use the topic filter to drill any weaker of 1.1 or 1.2, then regenerate.",
-    revBandFair: "Mixed performance: re-read the plant growth scenario for stages and variables.",
+      "Overall accuracy is very high. Keep mixing Chapter 1 topics so recall stays sharp.",
+    revBandGood: "Good result. Use the topic filter to drill any weaker of 1.1–1.7, then regenerate.",
+    revBandFair: "Mixed performance: re-read fast notes for weaker subtopics, then regenerate.",
     revBandLow:
-      "Several ideas need consolidation. Review investigation stages (1.1) and IV / DV / controlled variables (1.2).",
+      "Several ideas need consolidation. Review investigation stages, variables, lab safety, apparatus, measurement, Bunsen burner, and invention vs discovery.",
     revWeakOne: "Prioritise revision on {type} — you scored {c}/{t} ({pct}%) in that topic.",
     revStrongOne: "Strength: every {type} item correct ({n} questions).",
     revTwoStrike: "Questions missed twice: study the model answers, then regenerate those topics.",
