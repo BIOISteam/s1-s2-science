@@ -1,0 +1,44 @@
+{
+  "chapter": "Chapter 1 — Introduction to Science",
+  "chapterSlug": "ch1",
+  "uiLanguage": "en",
+  "scopeThisPass": ["1.3", "1.4", "1.5", "1.6", "1.7"],
+  "existingInQuiz": ["1.1", "1.2"],
+  "questionsPerSubtopic": 5,
+  "targetNewMcq": 25,
+  "images": [],
+  "notesOnImages": "1.3 hazard symbols and 1.4 apparatus/cross-section often need figures — Step 4b after draft confirm; text-only MCQ possible for QC if user postpones photos.",
+  "sources": [
+    {
+      "id": "N013",
+      "file": "notes/1.3-hazard-lab-safety.pdf",
+      "subtopic": "1.3",
+      "title": "Hazard warning symbols & lab safety"
+    },
+    {
+      "id": "N014",
+      "file": "notes/1.4-apparatus-diagrams.pdf",
+      "subtopic": "1.4",
+      "title": "Apparatus & cross-sectional diagrams"
+    },
+    {
+      "id": "N015",
+      "file": "notes/1.5-measurement.pdf",
+      "subtopic": "1.5",
+      "title": "Measurement"
+    },
+    {
+      "id": "N016",
+      "file": "notes/1.6-bunsen-burner.pdf",
+      "subtopic": "1.6",
+      "title": "Structure and usage of the Bunsen burner"
+    },
+    {
+      "id": "N017",
+      "file": "notes/1.7-invention-discovery-branches.pdf",
+      "subtopic": "1.7",
+      "title": "Invention VS discovery; branches of science; other scientific investigation"
+    }
+  ],
+  "answerKey": "embedded in PDF answer keys (1.3, 1.4, 1.6, 1.7) + inferred from note definitions (1.5)"
+}
