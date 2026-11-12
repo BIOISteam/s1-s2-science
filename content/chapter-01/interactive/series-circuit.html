@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Current, Voltage, and Resistance | S1-S2 Integrated Science</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    html, body, #root { height: 100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Inter, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+      background:
+        radial-gradient(1000px 420px at 0% -10%, #dbeafe 0%, transparent 55%),
+        radial-gradient(800px 380px at 100% 0%, #ffedd5 0%, transparent 50%),
+        #f3f6fb;
+      color: #0f172a;
+    }
+    .stage-shell {
+      box-sizing: border-box;
+      height: 100%;
+      display: flex;
+      gap: 12px;
+      padding: 12px;
+    }
+    .stage {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .deck {
+      flex: none;
+      min-height: 0;
+      display: flex;
+      width: 72px;
+      transition: width 0.28s ease, height 0.28s ease;
+    }
+    .deck.is-open { width: min(420px, 40vw); }
+    .deck-panel {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: 0 16px 48px rgba(15, 23, 42, 0.16);
+    }
+    .deck-rail {
+      box-sizing: border-box;
+      width: 72px;
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 6px;
+      background: #0f172a;
+    }
+    .deck-toggle, .deck-tab {
+      border: 0;
+      cursor: pointer;
+      border-radius: 12px;
+      font-weight: 650;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+    .deck-toggle {
+      background: #f59e0b;
+      color: #0f172a;
+      padding: 12px 6px;
+    }
+    .deck-tab {
+      background: transparent;
+      color: #cbd5e1;
+      padding: 14px 4px;
+      font-size: 15px;
+      letter-spacing: 0.04em;
+    }
+    .deck-tab[aria-selected="true"] {
+      background: #fff;
+      color: #0f172a;
+    }
+    .deck-body {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+      padding: 14px 14px 20px;
+      background: #fff;
+    }
+    @media (max-width: 840px) {
+      .stage-shell { flex-direction: column; }
+      .deck, .deck.is-open { width: 100%; height: 52px; }
+      .deck.is-open { height: min(48vh, 460px); }
+      .deck-panel { flex-direction: column; }
+      .deck-rail {
+        width: auto;
+        height: 52px;
+        flex-direction: row;
+        align-items: center;
+      }
+      .deck-toggle, .deck-tab {
+        writing-mode: horizontal-tb;
+        transform: none;
+        padding: 8px 12px;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .deck { transition: none; }
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #0f172a;
+      border: 3px solid #fff;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35);
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #0f172a;
+      border: 3px solid #fff;
+      box-shadow: 0 1px 4px rgba(15, 23, 42, 0.35);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useEffect, useMemo, useRef, useState } = React;
+
+    const CELL_VOLTS = 1.5;
+    const CELL_INTERNAL = 0.3;
+    const BULB_OHMS = 6;
+    const GLOW_WATT = 1.5;
+    const RHO = { copper: 1.68e-8, nichrome: 1.1e-6 };
+    const OHM_CHOICES = [2, 5, 10, 20, 50];
+    const SUP = { 0: "⁰", 1: "¹", 2: "²", 3: "³", 4: "⁴", 5: "⁵", 6: "⁶", 7: "⁷", 8: "⁸", 9: "⁹" };
+
+    const GEO = {
+      vbW: 720,
+      vbH: 340,
+      left: 136,
+      right: 664,
+      top: 92,
+      bottom: 246,
+      r: 26,
+    };
+
+    function wireMeander(lengthCm) {
+      const x1 = GEO.left + GEO.r + 6;
+      const x2 = GEO.right - GEO.r - 6;
+      const y = GEO.top;
+      const t = Math.max(0, Math.min(1, (lengthCm - 10) / 190));
+      if (t < 0.04) return { d: `M ${x1} ${y} H ${x2}`, x1, x2 };
+      const waves = Math.max(2, Math.round(2 + t * 6));
+      const span = x2 - x1;
+      let d = `M ${x1} ${y}`;
+      for (let i = 0; i < waves; i += 1) {
+        const xb = x1 + (span * (i + 1)) / waves;
+        const mid = x1 + (span * (i + 0.5)) / waves;
+        const down = i % 2 === 0;
+        const amp = down ? 16 + t * 14 : 10 + t * 4;
+        d += ` Q ${mid} ${y + (down ? amp : -amp)} ${xb} ${y}`;
+      }
+      return { d, x1, x2 };
+    }
+
+    function loopPath(lengthCm) {
+      const meander = wireMeander(lengthCm);
+      const curve = meander.d.replace(/^M\s+[-\d.]+\s+[-\d.]+\s*/, "");
+      return [
+        `M ${GEO.left + GEO.r} ${GEO.top}`,
+        `H ${meander.x1}`,
+        curve,
+        `H ${GEO.right - GEO.r}`,
+        `A ${GEO.r} ${GEO.r} 0 0 1 ${GEO.right} ${GEO.top + GEO.r}`,
+        `V ${GEO.bottom - GEO.r}`,
+        `A ${GEO.r} ${GEO.r} 0 0 1 ${GEO.right - GEO.r} ${GEO.bottom}`,
+        `H ${GEO.left + GEO.r}`,
+        `A ${GEO.r} ${GEO.r} 0 0 1 ${GEO.left} ${GEO.bottom - GEO.r}`,
+        `V ${GEO.top + GEO.r}`,
+        `A ${GEO.r} ${GEO.r} 0 0 1 ${GEO.left + GEO.r} ${GEO.top}`,
+      ].join(" ");
+    }
+
+    function sup(exp) {
+      const sign = exp < 0 ? "⁻" : "";
+      return sign + String(Math.abs(exp)).split("").map((d) => SUP[d]).join("");
+    }
+
+    function sci(n, digits = 2) {
+      if (!Number.isFinite(n) || n === 0) return "0";
+      let exp = Math.floor(Math.log10(Math.abs(n)));
+      let mant = n / Math.pow(10, exp);
+      if (Math.abs(Number(mant.toFixed(digits))) >= 10) {
+        mant /= 10;
+        exp += 1;
+      }
+      return `${mant.toFixed(digits)} × 10${sup(exp)}`;
+    }
+
+    function formatOhms(r) {
+      if (r === 0) return "0 Ω";
+      if (r < 0.001) return `${(r * 1000).toFixed(2)} mΩ`;
+      if (r < 10) return `${r.toFixed(3)} Ω`;
+      return r < 100 ? `${r.toFixed(2)} Ω` : `${r.toFixed(1)} Ω`;
+    }
+
+    function formatCurrent(i) {
+      if (i < 0.001) return `${(i * 1000).toFixed(2)} mA`;
+      return i < 10 ? `${i.toFixed(3)} A` : `${i.toFixed(2)} A`;
+    }
+
+    function formatPct(fraction) {
+      const pct = fraction * 100;
+      if (pct < 0.1) return "< 0.1%";
+      return pct < 1 ? `${pct.toFixed(2)}%` : `${pct.toFixed(1)}%`;
+    }
+
+    function wireResistance(material, lengthCm, diameterMm) {
+      const lengthM = lengthCm / 100;
+      const radiusM = diameterMm / 2000;
+      const area = Math.PI * radiusM * radiusM;
+      return {
+        resistance: (RHO[material] * lengthM) / area,
+        area,
+        lengthM,
+        radiusM,
+      };
+    }
+
+    function brightnessOf(power) {
+      if (power < 0.08) return { en: "Off", zh: "不亮" };
+      if (power < 0.35) return { en: "Dim", zh: "微亮" };
+      if (power < 1.5) return { en: "Lit", zh: "發亮" };
+      if (power < 4) return { en: "Bright", zh: "很亮" };
+      return { en: "Overloaded", zh: "過亮" };
+    }
+
+    function computeModel(state) {
+      const wire = wireResistance(state.material, state.lengthCm, state.diameterMm);
+      const copper = wireResistance("copper", state.lengthCm, state.diameterMm);
+      const nichrome = wireResistance("nichrome", state.lengthCm, state.diameterMm);
+      const bulbCount = state.parts.filter((p) => p.type === "bulb").length;
+      const bulbR = bulbCount * BULB_OHMS;
+      const resistorR = state.parts.reduce((sum, p) => sum + (p.type === "resistor" ? p.ohms : 0), 0);
+      const cellR = state.cells * CELL_INTERNAL;
+      const voltage = state.cells * CELL_VOLTS;
+      const totalR = wire.resistance + bulbR + resistorR + cellR;
+      const current = voltage / totalR;
+      const bulbPower = current * current * BULB_OHMS;
+      const wirePower = current * current * wire.resistance;
+      const loadR = bulbR + resistorR;
+      return {
+        ...state,
+        ...wire,
+        wireR: wire.resistance,
+        copperR: copper.resistance,
+        nichromeR: nichrome.resistance,
+        bulbCount,
+        bulbR,
+        resistorR,
+        cellR,
+        voltage,
+        totalR,
+        current,
+        bulbPower,
+        wirePower,
+        glow: bulbPower / GLOW_WATT,
+        loadR,
+        wireShare: wire.resistance / totalR,
+        brightness: bulbCount ? brightnessOf(bulbPower) : null,
+        short: loadR + wire.resistance < 0.5,
+        hot: bulbCount > 0 && bulbPower > 4,
+        dark: bulbCount > 0 && bulbPower < 0.08,
+        heating: wirePower > 0.8 && wire.resistance >= 0.5,
+      };
+    }
+
+    function filamentColor(glow) {
+      if (glow < 0.08) return "#64748b";
+      if (glow < 0.45) return "#f59e0b";
+      return "#fff7ed";
+    }
+
+    function FlowDots({ pathRef, currentRef, count, color, radius }) {
+      const dotRefs = useRef([]);
+      useEffect(() => {
+        if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return undefined;
+        let frame = 0;
+        let last = performance.now();
+        const phases = Array.from({ length: count }, (_, i) => i / count);
+        const tick = (now) => {
+          const dt = Math.min(0.05, (now - last) / 1000);
+          last = now;
+          const path = pathRef.current;
+          if (path) {
+            const len = path.getTotalLength();
+            const current = currentRef.current || 0;
+            const speed = Math.min(0.7, Math.max(0.012, current * 0.52));
+            const alpha = Math.max(0.18, Math.min(1, current / 0.18));
+            for (let i = 0; i < count; i += 1) {
+              phases[i] = (phases[i] + dt * speed) % 1;
+              const point = path.getPointAtLength(phases[i] * len);
+              const node = dotRefs.current[i];
+              if (!node) continue;
+              node.setAttribute("cx", point.x.toFixed(2));
+              node.setAttribute("cy", point.y.toFixed(2));
+              node.setAttribute("opacity", alpha.toFixed(3));
+            }
+          }
+          frame = requestAnimationFrame(tick);
+        };
+        frame = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(frame);
+      }, [pathRef, currentRef, count]);
+
+      return Array.from({ length: count }, (_, i) => (
+        <circle
+          key={i}
+          ref={(node) => { dotRefs.current[i] = node; }}
+          r={radius}
+          fill={color}
+          stroke="#fff"
+          strokeWidth="1.2"
+          opacity="0"
+        />
+      ));
+    }
+
+    function MeterRow({ model }) {
+      const tiles = [
+        ["Voltage 電壓", model.voltage.toFixed(1), "V", `${model.cells} × ${CELL_VOLTS.toFixed(1)} V cells`, "text-violet-700", "bg-violet-50"],
+        ["Current 電流", formatCurrent(model.current).replace(" A", "").replace(" mA", ""), formatCurrent(model.current).includes("mA") ? "mA" : "A", model.brightness ? `Bulb ${model.brightness.en} · ${model.brightness.zh}` : "No bulb in the loop", "text-amber-700", "bg-amber-50"],
+        ["Resistance 電阻", formatOhms(model.totalR).replace(" Ω", "").replace(" mΩ", ""), formatOhms(model.totalR).includes("mΩ") ? "mΩ" : "Ω", `Wire ${formatPct(model.wireShare)} of the loop`, "text-sky-800", "bg-sky-50"],
+      ];
+      return (
+        <section className="grid gap-3 sm:grid-cols-3" aria-live="polite">
+          {tiles.map(([label, value, unit, note, color, wash]) => (
+            <div key={label} className={`rounded-2xl border border-white/80 ${wash} px-4 py-3 shadow-sm`}>
+              <p className="text-xs font-medium text-slate-500">{label}</p>
+              <p className={`mt-1 text-3xl font-semibold tabular-nums tracking-tight ${color}`}>
+                {value}<span className="ml-1 text-lg font-medium">{unit}</span>
+              </p>
+              <p className="mt-1 text-sm text-slate-600">{note}</p>
+            </div>
+          ))}
+        </section>
+      );
+    }
+
+    function EquationStrip({ model }) {
+      return (
+        <div className="rounded-2xl bg-white px-4 py-3 text-center shadow-sm ring-1 ring-slate-200/80">
+          <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Current = voltage ÷ resistance · 電流 = 電壓 ÷ 電阻</p>
+          <p className="mt-1 text-lg font-semibold tabular-nums sm:text-2xl">
+            <span className="text-amber-700">{formatCurrent(model.current)}</span>
+            <span className="text-slate-400"> = </span>
+            <span className="text-violet-700">{model.voltage.toFixed(1)} V</span>
+            <span className="text-slate-400"> ÷ </span>
+            <span className="text-sky-800">{formatOhms(model.totalR)}</span>
+          </p>
+        </div>
+      );
+    }
+
+    function Banners({ model, focus, mode = "all" }) {
+      const notes = [];
+      if (model.short) {
+        notes.push(["short", "bg-red-50 text-red-900 ring-red-200", "Short circuit. Almost nothing is holding the current back, so it surges and the cells would heat up.", "短路：回路幾乎沒有電阻，電流很大，電池會發熱。"]);
+      }
+      if (model.hot) {
+        notes.push(["hot", "bg-orange-50 text-orange-950 ring-orange-200", "The bulb is past this model’s brightness limit. A real filament could melt.", "燈泡超過這個模型的亮度上限，真實燈絲可能燒斷。"]);
+      }
+      if (model.dark) {
+        notes.push(["dark", "bg-slate-100 text-slate-800 ring-slate-200", "The current is too small to light the bulb. Too little flow is getting through.", "電流通過小，燈泡不亮。能通過的水流太少。"]);
+      }
+      if (model.heating && !model.short) {
+        notes.push(["heat", "bg-amber-50 text-amber-950 ring-amber-200", `The test wire is warming up (${model.wirePower.toFixed(2)} W), the way a heater element does.`, `這段電線正在發熱（${model.wirePower.toFixed(2)} W），就像電熱絲。`]);
+      }
+      const copy = {
+        intro: ["One series loop ties the three together. Change the cells, the parts, or the wire, and the current has to change with them.", "同一條串聯回路把三者連在一起。改變電池、零件或電線，電流就會跟著變。"],
+        cells: ["Extra cells raise the voltage, like turning up a pump. The same pipes then carry a larger current, so the bulb glows more.", "電池愈多，電壓愈高，就像把水泵開大。同樣的水管會有更大的水流，燈泡就更亮。"],
+        load: ["Bulbs and resistors sit in the same loop, so their resistances add. A larger total leaves less current for every bulb.", "燈泡和電阻器在同一條回路，電阻會相加。總電阻愈大，每顆燈泡分到的電流愈小。"],
+        material: [`Nichrome resists about ${Math.round(RHO.nichrome / RHO.copper)} times more than copper of the same size — like the same pipe packed with sand.`, "同樣長短粗細時，鎳鉻合金的電阻約是銅的 65 倍，就像同一條水管塞滿了沙子。"],
+        diameter: ["Thickness changes area by the square of the radius. A thicker wire is a wider pipe, so current passes more easily.", "粗幼影響截面積，而且跟半徑的平方成正比。電線愈粗，就像水管愈寬，電流通過愈容易。"],
+        length: ["A longer wire is a longer pipe. Charges meet more resistance along the way, so the current falls.", "電線愈長，就像水管愈長。電荷沿途遇到的阻力愈多，電流就愈小。"],
+      }[focus];
+      const showHint = (focus === "material" || focus === "diameter" || focus === "length") && model.wireShare < 0.12 && !model.short;
+      const alerts = notes.map(([key, tone, en, zh]) => (
+        <div key={key} className={`rounded-2xl px-4 py-2 text-sm ring-1 ${tone}`}>
+          <p>{en}</p>
+          <p className="mt-1 opacity-80">{zh}</p>
+        </div>
+      ));
+      const insight = (
+        <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm ring-1 ring-slate-200/80">
+          <p>{copy[0]}</p>
+          <p className="mt-1 text-slate-500">{copy[1]}</p>
+          {showHint && (
+            <p className="mt-2 text-sky-800">
+              Right now this wire is only {formatPct(model.wireShare)} of the total resistance — the bulb is doing most of the holding back. Make it longer, thinner, or nichrome to see a bigger change.
+              <span className="mt-1 block text-sky-700/80">現在這段電線只佔總電阻的 {formatPct(model.wireShare)}。把它加長、變細，或改成鎳鉻合金，變化會更明顯。</span>
+            </p>
+          )}
+        </div>
+      );
+      if (mode === "alerts") return notes.length ? <div className="space-y-2">{alerts}</div> : null;
+      if (mode === "line") {
+        return (
+          <p className="text-sm leading-5 text-slate-600">
+            {copy[0]}
+            {showHint && ` This wire is only ${formatPct(model.wireShare)} of the loop, so the bulb still does most of the holding back.`}
+          </p>
+        );
+      }
+      if (mode === "insight") return insight;
+      return <div className="space-y-2">{alerts}{insight}</div>;
+    }
+
+    function CircuitCard({ model, currentRef }) {
+      const pathRef = useRef(null);
+      const pitch = 15;
+      const span = (model.cells - 1) * pitch + 6;
+      const midY = (GEO.top + GEO.bottom) / 2;
+      const batTop = midY - span / 2;
+      const batBot = batTop + span;
+      const wireW = 5 + ((model.diameterMm - 0.2) / 1.3) * 11;
+      const wireColor = model.material === "copper" ? "#ea580c" : "#64748b";
+      const meander = wireMeander(model.lengthCm);
+      const curve = meander.d.replace(/^M\s+[-\d.]+\s+[-\d.]+\s*/, "");
+      const wireD = `M ${GEO.left + GEO.r} ${GEO.top} H ${meander.x1} ${curve} H ${GEO.right - GEO.r}`;
+      const loopD = loopPath(model.lengthCm);
+      const n = model.parts.length;
+      const slotX = (index) => {
+        const x0 = GEO.left + 78;
+        const x1 = GEO.right - 78;
+        if (n <= 1) return (x0 + x1) / 2;
+        return x0 + (index * (x1 - x0)) / (n - 1);
+      };
+
+      return (
+        <section className="flex min-h-0 flex-1 flex-col rounded-3xl bg-white p-3 shadow-sm ring-1 ring-slate-200/80 sm:p-4">
+          <div className="mb-1 flex shrink-0 items-baseline justify-between gap-3">
+            <h2 className="text-base font-semibold">Circuit <span className="font-normal text-slate-500">電路</span></h2>
+            <p className="text-xs text-slate-500">Dots move with the current · 圓點速度 = 電流</p>
+          </div>
+          <div className="min-h-0 flex-1">
+          <svg viewBox={`0 0 ${GEO.vbW} ${GEO.vbH}`} className="block h-full w-full" role="img" aria-label="Series circuit">
+            <defs>
+              <filter id="softGlow" x="-80%" y="-80%" width="260%" height="260%">
+                <feGaussianBlur stdDeviation="6" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <filter id="heatBlur" x="-40%" y="-80%" width="180%" height="260%">
+                <feGaussianBlur stdDeviation="7" />
+              </filter>
+            </defs>
+            <path ref={pathRef} d={loopD} fill="none" stroke="transparent" />
+            <path
+              d={`M ${GEO.left} ${GEO.top + GEO.r} V ${batTop - 8} M ${GEO.left} ${batBot + 10} V ${GEO.bottom - GEO.r}`}
+              fill="none" stroke="#94a3b8" strokeWidth="4" strokeLinecap="round"
+            />
+            <path
+              d={`M ${GEO.right} ${GEO.top + GEO.r} V ${GEO.bottom - GEO.r}`}
+              fill="none" stroke="#94a3b8" strokeWidth="4" strokeLinecap="round"
+            />
+            <path
+              d={`M ${GEO.right - GEO.r} ${GEO.bottom} H ${GEO.left + GEO.r}`}
+              fill="none" stroke="#94a3b8" strokeWidth="4" strokeLinecap="butt"
+            />
+            <path d={`M ${GEO.left + GEO.r} ${GEO.top} A ${GEO.r} ${GEO.r} 0 0 0 ${GEO.left} ${GEO.top + GEO.r}`} fill="none" stroke="#94a3b8" strokeWidth="4" />
+            <path d={`M ${GEO.right - GEO.r} ${GEO.top} A ${GEO.r} ${GEO.r} 0 0 1 ${GEO.right} ${GEO.top + GEO.r}`} fill="none" stroke="#94a3b8" strokeWidth="4" />
+            <path d={`M ${GEO.right} ${GEO.bottom - GEO.r} A ${GEO.r} ${GEO.r} 0 0 1 ${GEO.right - GEO.r} ${GEO.bottom}`} fill="none" stroke="#94a3b8" strokeWidth="4" />
+            <path d={`M ${GEO.left} ${GEO.bottom - GEO.r} A ${GEO.r} ${GEO.r} 0 0 0 ${GEO.left + GEO.r} ${GEO.bottom}`} fill="none" stroke="#94a3b8" strokeWidth="4" />
+
+            <path
+              d={wireD}
+              fill="none" stroke="#fb7185" strokeWidth={wireW + 12} strokeLinecap="round" strokeLinejoin="round"
+              opacity={Math.min(0.8, model.wirePower / 2.2)} filter="url(#heatBlur)"
+            />
+            <path
+              d={wireD}
+              fill="none" stroke={wireColor} strokeWidth={wireW} strokeLinecap="round" strokeLinejoin="round"
+            />
+            <text x={(GEO.left + GEO.right) / 2} y={GEO.top - 52} textAnchor="middle" fontSize="15" fill="#334155">
+              {model.material === "copper" ? "Copper 銅" : "Nichrome 鎳鉻合金"} · {model.diameterMm.toFixed(2)} mm · {model.lengthCm} cm
+            </text>
+            <text x={(GEO.left + GEO.right) / 2} y={GEO.top - 30} textAnchor="middle" fontSize="16" fontWeight="700" fill="#b45309">
+              {formatCurrent(model.current)} →
+            </text>
+            <text x="18" y={midY - 8} fontSize="18" fontWeight="700" fill="#6d28d9">{model.voltage.toFixed(1)} V</text>
+            <text x="18" y={midY + 16} fontSize="13" fill="#7c3aed">{model.cells} cells</text>
+
+            {Array.from({ length: model.cells }, (_, i) => {
+              const y = batTop + i * pitch;
+              return (
+                <g key={i}>
+                  <line x1={GEO.left - 26} y1={y} x2={GEO.left + 26} y2={y} stroke="#0f172a" strokeWidth="2.6" />
+                  <line x1={GEO.left - 14} y1={y + 6} x2={GEO.left + 14} y2={y + 6} stroke="#0f172a" strokeWidth="5.5" strokeLinecap="round" />
+                </g>
+              );
+            })}
+            <text x={GEO.left + 32} y={batTop + 4} fontSize="14" fontWeight="700" fill="#0f172a">+</text>
+            <text x={GEO.left + 32} y={batBot + 8} fontSize="16" fontWeight="700" fill="#0f172a">−</text>
+
+            {model.parts.map((part, index) => {
+              const x = slotX(index);
+              if (part.type === "bulb") {
+                const glow = Math.max(0, model.glow);
+                return (
+                  <g key={part.id}>
+                    <rect x={x - 22} y={GEO.bottom - 4} width="44" height="8" fill="#fff" />
+                    <circle cx={x} cy={GEO.bottom} r={20 + Math.min(12, glow * 8)} fill="#fbbf24" opacity={Math.min(0.7, glow * 0.5)} filter="url(#softGlow)" />
+                    <circle cx={x} cy={GEO.bottom} r="16" fill="#f8fafc" stroke="#334155" strokeWidth="2" />
+                    <path d={`M ${x - 7} ${GEO.bottom + 4} Q ${x - 3} ${GEO.bottom - 8} ${x} ${GEO.bottom + 4} Q ${x + 3} ${GEO.bottom - 8} ${x + 7} ${GEO.bottom + 4}`} fill="none" stroke={filamentColor(glow)} strokeWidth="2" />
+                    <text x={x} y={GEO.bottom + 38} textAnchor="middle" fontSize="13" fill="#92400e">{BULB_OHMS} Ω</text>
+                  </g>
+                );
+              }
+              const ohms = part.ohms;
+              return (
+                <g key={part.id}>
+                  <rect x={x - 28} y={GEO.bottom - 12} width="56" height="24" fill="#fff" />
+                  <polyline
+                    points={`${x - 26},${GEO.bottom} ${x - 18},${GEO.bottom - 10} ${x - 10},${GEO.bottom + 10} ${x - 2},${GEO.bottom - 10} ${x + 6},${GEO.bottom + 10} ${x + 14},${GEO.bottom - 10} ${x + 22},${GEO.bottom}`}
+                    fill="none" stroke="#047857" strokeWidth="2.4" strokeLinejoin="round" strokeLinecap="round"
+                  />
+                  <text x={x} y={GEO.bottom + 38} textAnchor="middle" fontSize="13" fill="#047857">{ohms} Ω</text>
+                </g>
+              );
+            })}
+            <FlowDots pathRef={pathRef} currentRef={currentRef} count={12} color="#f59e0b" radius="4.5" />
+          </svg>
+          </div>
+        </section>
+      );
+    }
+
+    function gateOpening(ohms) {
+      const t = Math.min(1, Math.log(ohms / 2) / Math.log(25));
+      return 22 - Math.max(0, t) * 16;
+    }
+
+    function WaterCard({ model, currentRef, compact = false }) {
+      const flowRef = useRef(null);
+      const cy = 118;
+      const leadInner = 28;
+      const innerH = 14 + ((model.diameterMm - 0.2) / 1.3) * 36;
+      const n = model.parts.length;
+      const gateW = 58;
+      const reserved = 150 + n * (gateW + 8) + 28;
+      const room = Math.max(90, 760 - reserved);
+      const t = (model.lengthCm - 10) / 190;
+      const segW = Math.round(72 + t * (room - 72));
+      let x = 112;
+      const segX = x;
+      x += segW + 8;
+      const gates = model.parts.map((part) => {
+        const gx = x;
+        x += gateW + 8;
+        return { ...part, x: gx };
+      });
+      const flowEnd = Math.max(x, segX + segW + 16);
+      const tankH = 16 + (model.cells / 6) * 78;
+      const sand = model.material === "nichrome";
+
+      return (
+        <section className={compact ? "rounded-3xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200/80" : "rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80"}>
+          <div className="mb-1 flex items-baseline justify-between gap-3">
+            <h2 className="text-sm font-semibold">Water pipe <span className="font-normal text-slate-500">水管比喻</span></h2>
+            <p className="text-xs text-slate-500">
+              {sand ? "Sand-filled 塞滿沙子" : "Open pipe 暢通"} · {model.diameterMm.toFixed(2)} mm · {model.lengthCm} cm
+            </p>
+          </div>
+          {!compact && (
+            <p className="mb-1 text-sm text-slate-600">
+              {sand ? "Nichrome is a pipe packed with sand. 鎳鉻合金畫成塞滿沙子的水管。" : "Copper is a smooth open pipe. 銅畫成暢通的水管。"}
+              {" "}The narrow gates are the bulbs and resistors.
+            </p>
+          )}
+          <svg viewBox="0 0 760 210" className={compact ? "h-28 w-full" : "h-auto w-full"} role="img" aria-label="Water-pipe model of the same circuit">
+            <path ref={flowRef} d={`M 108 ${cy} H ${flowEnd}`} fill="none" stroke="transparent" />
+            <rect x="16" y="58" width="78" height="112" rx="12" fill="#e2e8f0" stroke="#64748b" strokeWidth="2" />
+            <rect x="24" y={158 - tankH} width="62" height={tankH} rx="8" fill="#38bdf8" />
+            <text x="55" y="48" textAnchor="middle" fontSize="13" fill="#0369a1" fontWeight="700">Pump 水泵</text>
+            <text x="55" y="186" textAnchor="middle" fontSize="13" fill="#6d28d9" fontWeight="700">{model.voltage.toFixed(1)} V</text>
+
+            <rect x="100" y={cy - (leadInner + 12) / 2} width={flowEnd - 96} height={leadInner + 12} rx="14" fill="#475569" />
+            <rect x="106" y={cy - leadInner / 2} width={flowEnd - 108} height={leadInner} rx="10" fill="#7dd3fc" />
+
+            <rect x={segX} y={cy - (innerH + 12) / 2} width={segW} height={innerH + 12} rx="12" fill={sand ? "#44403c" : "#c2410c"} />
+            <rect x={segX + 5} y={cy - innerH / 2} width={Math.max(8, segW - 10)} height={innerH} rx="8" fill={sand ? "#e7e5e4" : "#7dd3fc"} />
+            {sand && Array.from({ length: Math.max(8, Math.round(segW / 14)) }, (_, i) => {
+              const col = i % 7;
+              const row = Math.floor(i / 7);
+              const gx = segX + 12 + col * 14;
+              const gy = cy - innerH / 2 + 6 + (row % 3) * 8;
+              if (gx > segX + segW - 10 || gy > cy + innerH / 2 - 4) return null;
+              return <circle key={i} cx={gx} cy={gy} r={1.3 + (i % 3) * 0.4} fill={i % 2 ? "#a16207" : "#78716c"} />;
+            })}
+            <text x={segX + segW / 2} y={cy + innerH / 2 + 22} textAnchor="middle" fontSize="12" fill="#475569">
+              {model.lengthCm} cm
+            </text>
+
+            {gates.map((gate) => {
+              const ohms = gate.type === "bulb" ? BULB_OHMS : gate.ohms;
+              const open = gateOpening(ohms);
+              const block = (leadInner - open) / 2;
+              const color = gate.type === "bulb" ? "#d97706" : "#059669";
+              return (
+                <g key={gate.id}>
+                  <rect x={gate.x} y={cy - leadInner / 2} width="18" height={block} fill={color} />
+                  <rect x={gate.x} y={cy + open / 2} width="18" height={block} fill={color} />
+                  <text x={gate.x + 9} y="198" textAnchor="middle" fontSize="12" fill={color}>
+                    {gate.type === "bulb" ? "Bulb" : "R"} {ohms} Ω
+                  </text>
+                </g>
+              );
+            })}
+            <FlowDots pathRef={flowRef} currentRef={currentRef} count={8} color="#0369a1" radius="4" />
+          </svg>
+          {!compact && <div className="mt-3 rounded-2xl bg-sky-50 px-4 py-3 text-sm text-sky-950">
+            <p className="font-medium">Why a voltmeter must resist almost all the flow 為什麼伏特計的電阻要極高</p>
+            <p className="mt-1">A low-resistance meter is a huge extra pipe beside the bulb. Most of the water rushes into that pipe, the bulb’s flow collapses, and the reading is useless. A real voltmeter is the opposite: a hair-thin pipe packed with sand. Almost no current takes it, so the bulb stays as it was.</p>
+            <p className="mt-1 text-sky-900/80">伏特計電阻如果很低，就像在燈泡旁接了一條超粗水管，水流衝進電錶，燈泡變暗，讀數就不準。電阻極高時，就像塞滿沙子的極細水管，電流幾乎不經過它，燈泡維持原狀。</p>
+          </div>}
+        </section>
+      );
+    }
+
+    function FormulaCard({ model }) {
+      const slices = [
+        ["Test wire 電線", model.wireR, model.material === "copper" ? "#ea580c" : "#64748b"],
+        ["Bulbs 燈泡", model.bulbR, "#f59e0b"],
+        ["Resistors 電阻器", model.resistorR, "#059669"],
+        ["Inside the cells 電池內部", model.cellR, "#7c3aed"],
+      ].filter(([, value]) => value > 0.0000001);
+      return (
+        <section className="rounded-3xl bg-white p-4 shadow-sm ring-1 ring-slate-200/80 sm:p-5">
+          <h2 className="text-base font-semibold">Where the numbers come from <span className="font-normal text-slate-500">數值從何而來</span></h2>
+          <div className="mt-3 grid gap-4 lg:grid-cols-2">
+            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6">
+              <p className="font-medium text-slate-700">Whole loop · I = V / R</p>
+              <p className="mt-1 tabular-nums">R = {formatOhms(model.wireR)} + {formatOhms(model.bulbR)} + {formatOhms(model.resistorR)} + {formatOhms(model.cellR)}</p>
+              <p className="tabular-nums text-slate-500">wire + bulbs + resistors + inside cells</p>
+              <p className="mt-1 font-semibold tabular-nums text-sky-800">R = {formatOhms(model.totalR)}</p>
+              <p className="mt-2 tabular-nums">I = {model.voltage.toFixed(1)} ÷ {formatOhms(model.totalR)} = {formatCurrent(model.current)}</p>
+              <p className="text-slate-500">Each cell is {CELL_VOLTS.toFixed(1)} V with {CELL_INTERNAL.toFixed(1)} Ω inside it, so a short circuit still has a limit.</p>
+            </div>
+            <div className="rounded-2xl bg-slate-50 px-4 py-3 text-sm leading-6">
+              <p className="font-medium text-slate-700">Test wire · R = ρ L / A</p>
+              <p className="mt-1 tabular-nums">ρ = {sci(RHO[model.material])} Ω·m · L = {model.lengthM.toFixed(2)} m</p>
+              <p className="tabular-nums">d = {(model.diameterMm / 1000).toFixed(5)} m · A = π r² = {sci(model.area)} m²</p>
+              <p className="mt-1 font-semibold tabular-nums">R_wire = {formatOhms(model.wireR)}</p>
+              <p className="text-slate-500">Same size in copper: {formatOhms(model.copperR)}. Same size in nichrome: {formatOhms(model.nichromeR)}.</p>
+            </div>
+          </div>
+          <div className="mt-4">
+            <div className="flex h-3 overflow-hidden rounded-full bg-slate-100">
+              {slices.map(([label, value, color]) => (
+                <div key={label} style={{ width: `${(value / model.totalR) * 100}%`, background: color }} title={`${label} ${formatOhms(value)}`} />
+              ))}
+            </div>
+            <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+              {slices.map(([label, value, color]) => (
+                <li key={label} className="flex items-center gap-1.5">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: color }} />
+                  {label} · {formatOhms(value)} · {formatPct(value / model.totalR)}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      );
+    }
+
+    function App() {
+      const idRef = useRef(2);
+      const [cells, setCells] = useState(2);
+      const [parts, setParts] = useState([{ type: "bulb", id: 1 }]);
+      const [material, setMaterial] = useState("copper");
+      const [diameterMm, setDiameterMm] = useState(0.6);
+      const [lengthCm, setLengthCm] = useState(40);
+      const [focus, setFocus] = useState("intro");
+      const [deckOpen, setDeckOpen] = useState(true);
+      const [deckTab, setDeckTab] = useState("cells");
+
+      function chooseTab(id) {
+        setDeckTab(id);
+        setDeckOpen(true);
+      }
+
+      const model = useMemo(
+        () => computeModel({ cells, parts, material, diameterMm, lengthCm }),
+        [cells, parts, material, diameterMm, lengthCm]
+      );
+      const currentRef = useRef(model.current);
+      currentRef.current = model.current;
+
+      const bulbCount = parts.filter((p) => p.type === "bulb").length;
+      const resistorCount = parts.length - bulbCount;
+
+      function addPart(type) {
+        setParts((prev) => {
+          const bulbs = prev.filter((p) => p.type === "bulb").length;
+          const resistors = prev.length - bulbs;
+          if (type === "bulb" && bulbs >= 3) return prev;
+          if (type === "resistor" && resistors >= 2) return prev;
+          const id = idRef.current;
+          idRef.current += 1;
+          return [...prev, type === "bulb" ? { type, id } : { type, id, ohms: 10 }];
+        });
+        setFocus("load");
+      }
+
+      function applyScene(scene) {
+        const nid = () => {
+          const id = idRef.current;
+          idRef.current += 1;
+          return id;
+        };
+        if (scene === "bright") {
+          setCells(3);
+          setParts([{ type: "bulb", id: nid() }]);
+          setMaterial("copper");
+          setDiameterMm(1.2);
+          setLengthCm(20);
+          setFocus("cells");
+        } else if (scene === "series") {
+          setCells(2);
+          setParts([{ type: "bulb", id: nid() }, { type: "bulb", id: nid() }]);
+          setMaterial("copper");
+          setDiameterMm(0.8);
+          setLengthCm(30);
+          setFocus("load");
+        } else {
+          setCells(3);
+          setParts([{ type: "bulb", id: nid() }]);
+          setMaterial("nichrome");
+          setDiameterMm(0.3);
+          setLengthCm(150);
+          setFocus("material");
+        }
+      }
+
+      function reset() {
+        setCells(2);
+        setParts([{ type: "bulb", id: idRef.current }]);
+        idRef.current += 1;
+        setMaterial("copper");
+        setDiameterMm(0.6);
+        setLengthCm(40);
+        setFocus("intro");
+      }
+
+      const diameterPct = ((diameterMm - 0.2) / 1.3) * 100;
+      const lengthPct = ((lengthCm - 10) / 190) * 100;
+
+      const tabs = [
+        ["cells", "Cells", "電池"],
+        ["parts", "Parts", "零件"],
+        ["wire", "Wire", "電線"],
+        ["notes", "Notes", "說明"],
+      ];
+
+      return (
+        <main className="stage-shell">
+          <div className="stage">
+            {deckOpen ? (
+              <>
+                <header className="flex shrink-0 items-end justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Model 1 · Series loop 串聯回路</p>
+                    <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Current, voltage, and resistance</h1>
+                  </div>
+                </header>
+                <div className="shrink-0"><MeterRow model={model} /></div>
+                <div className="shrink-0"><EquationStrip model={model} /></div>
+              </>
+            ) : (
+              <div className="shrink-0 rounded-2xl bg-white px-4 py-2 text-center shadow-sm ring-1 ring-slate-200/80">
+                <p className="text-lg font-semibold tabular-nums sm:text-xl">
+                  <span className="text-amber-700">{formatCurrent(model.current)}</span>
+                  <span className="text-slate-400"> = </span>
+                  <span className="text-violet-700">{model.voltage.toFixed(1)} V</span>
+                  <span className="text-slate-400"> ÷ </span>
+                  <span className="text-sky-800">{formatOhms(model.totalR)}</span>
+                  {model.brightness && (
+                    <span className="ml-3 text-sm font-medium text-slate-500">{model.brightness.en} · {model.brightness.zh}</span>
+                  )}
+                </p>
+              </div>
+            )}
+            <Banners model={model} focus={focus} mode="alerts" />
+            <CircuitCard model={model} currentRef={currentRef} />
+            {deckOpen && deckTab === "wire" && (
+              <div className="shrink-0">
+                <WaterCard model={model} currentRef={currentRef} compact />
+              </div>
+            )}
+          </div>
+
+          <aside className={deckOpen ? "deck is-open" : "deck"} aria-label="Controls">
+            <div className="deck-panel">
+              <div className="deck-rail" role="tablist" aria-label="Control tabs">
+                <button
+                  type="button"
+                  className="deck-toggle"
+                  aria-expanded={deckOpen}
+                  onClick={() => setDeckOpen((open) => !open)}
+                >
+                  {deckOpen ? "Hide" : "Show"}
+                </button>
+                {tabs.map(([id, en, zh]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={deckOpen && deckTab === id}
+                    className="deck-tab"
+                    aria-label={`${en} ${zh}`}
+                    onClick={() => chooseTab(id)}
+                  >
+                    {en}
+                  </button>
+                ))}
+              </div>
+              {deckOpen && (
+                <div className="deck-body">
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {[
+                      ["bright", "Bright bulb", "明亮燈泡"],
+                      ["series", "Two bulbs", "兩顆燈泡"],
+                      ["nichrome", "Nichrome", "鎳鉻電線"],
+                    ].map(([id, en, zh]) => (
+                      <button key={id} type="button" onClick={() => applyScene(id)} className="rounded-full bg-slate-50 px-3 py-1.5 text-sm ring-1 ring-slate-200 hover:bg-white">
+                        {en} <span className="text-slate-400">{zh}</span>
+                      </button>
+                    ))}
+                    <button type="button" onClick={reset} className="rounded-full bg-slate-50 px-3 py-1.5 text-sm ring-1 ring-slate-200 hover:bg-white">
+                      Reset 重置
+                    </button>
+                  </div>
+                  <div className="mb-3">
+                    <Banners model={model} focus={focus} mode="line" />
+                  </div>
+
+                  {deckTab === "cells" && (
+                    <section>
+                      <h2 className="text-base font-semibold">Cells <span className="font-normal text-slate-500">電池</span></h2>
+              <p className="mt-3 text-sm font-medium text-slate-700">Cells in series 串聯電池 · each {CELL_VOLTS.toFixed(1)} V</p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                <button type="button" aria-label="Remove a cell" onClick={() => { setCells((n) => Math.max(1, n - 1)); setFocus("cells"); }} className="h-10 w-10 rounded-full bg-violet-50 font-semibold text-violet-800 ring-1 ring-violet-200">−</button>
+                {Array.from({ length: 6 }, (_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-label={`${i + 1} cells`}
+                    aria-pressed={cells === i + 1}
+                    onClick={() => { setCells(i + 1); setFocus("cells"); }}
+                    className={`h-10 w-10 rounded-xl text-sm font-semibold ${i < cells ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-400"}`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button type="button" aria-label="Add a cell" onClick={() => { setCells((n) => Math.min(6, n + 1)); setFocus("cells"); }} className="h-10 w-10 rounded-full bg-violet-50 font-semibold text-violet-800 ring-1 ring-violet-200">+</button>
+              </div>
+                    </section>
+                  )}
+
+                  {deckTab === "parts" && (
+                    <section>
+                      <h2 className="text-base font-semibold">Bulbs and resistors <span className="font-normal text-slate-500">燈泡、電阻器</span></h2>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button type="button" disabled={bulbCount >= 3} onClick={() => addPart("bulb")} className="rounded-full bg-amber-500 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">
+                  + Bulb 燈泡
+                </button>
+                <button type="button" disabled={resistorCount >= 2} onClick={() => addPart("resistor")} className="rounded-full bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40">
+                  + Resistor 電阻器
+                </button>
+              </div>
+
+              <ul className="mt-3 space-y-2">
+                {parts.length === 0 && (
+                  <li className="rounded-2xl border border-dashed border-slate-300 px-3 py-3 text-sm text-slate-500">
+                    No bulb or resistor. Only the wire and the cells are in the loop — that is a short circuit if the wire resistance is tiny.
+                    <span className="mt-1 block">沒有燈泡或電阻器。電線電阻如果很小，這就是短路。</span>
+                  </li>
+                )}
+                {parts.map((part) => (
+                  <li key={part.id} className="flex flex-wrap items-center gap-2 rounded-2xl bg-slate-50 px-3 py-2">
+                    <span className="text-sm font-medium">{part.type === "bulb" ? `Bulb 燈泡 · ${BULB_OHMS} Ω` : "Resistor 電阻器"}</span>
+                    {part.type === "resistor" && OHM_CHOICES.map((ohms) => (
+                      <button
+                        key={ohms}
+                        type="button"
+                        aria-pressed={part.ohms === ohms}
+                        onClick={() => {
+                          setParts((prev) => prev.map((p) => (p.id === part.id ? { ...p, ohms } : p)));
+                          setFocus("load");
+                        }}
+                        className={`rounded-full px-2.5 py-1 text-xs font-semibold ${part.ohms === ohms ? "bg-emerald-600 text-white" : "bg-white text-slate-600 ring-1 ring-slate-200"}`}
+                      >
+                        {ohms} Ω
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      aria-label={part.type === "bulb" ? "Remove bulb" : "Remove resistor"}
+                      onClick={() => { setParts((prev) => prev.filter((p) => p.id !== part.id)); setFocus("load"); }}
+                      className="ml-auto rounded-full px-2 py-1 text-sm text-slate-500 hover:bg-white"
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+                    </section>
+                  )}
+
+                  {deckTab === "wire" && (
+                    <section>
+              <h2 className="text-base font-semibold">Test wire <span className="font-normal text-slate-500">測試電線</span></h2>
+              <p className="mt-1 text-sm text-slate-500">One stretch of wire in the loop. Connecting leads stay ideal. 回路裡的一段電線，其餘導線當成沒有電阻。</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {["copper", "nichrome"].map((name) => {
+                  const active = material === name;
+                  const ohms = name === "copper" ? model.copperR : model.nichromeR;
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => { setMaterial(name); setFocus("material"); }}
+                      className={`rounded-2xl px-3 py-3 text-left ring-1 ${active ? "bg-slate-900 text-white ring-slate-900" : "bg-slate-50 text-slate-700 ring-slate-200"}`}
+                    >
+                      <span className="block text-sm font-semibold">{name === "copper" ? "Copper 銅" : "Nichrome 鎳鉻合金"}</span>
+                      <span className={`mt-1 block text-lg font-semibold tabular-nums ${active ? "text-amber-200" : "text-slate-900"}`}>{formatOhms(ohms)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 flex items-center gap-4">
+                <svg viewBox="0 0 88 88" className="h-20 w-20 shrink-0" aria-hidden="true">
+                  <circle cx="44" cy="44" r="40" fill="#f8fafc" stroke="#e2e8f0" />
+                  <circle cx="44" cy="44" r={8 + diameterMm * 18} fill={material === "copper" ? "#ea580c" : "#64748b"} />
+                </svg>
+                <div className="min-w-0 flex-1 space-y-3">
+                  <label className="block text-sm font-medium">
+                    Diameter 直徑 · {diameterMm.toFixed(2)} mm
+                    <input
+                      className="mt-2"
+                      type="range" min="0.2" max="1.5" step="0.05"
+                      value={diameterMm}
+                      aria-valuetext={`${diameterMm.toFixed(2)} millimetres`}
+                      onChange={(event) => { setDiameterMm(Number(event.target.value)); setFocus("diameter"); }}
+                      style={{ background: `linear-gradient(90deg, #ea580c ${diameterPct}%, #e2e8f0 ${diameterPct}%)` }}
+                    />
+                  </label>
+                  <label className="block text-sm font-medium">
+                    Length 長度 · {lengthCm} cm
+                    <input
+                      className="mt-2"
+                      type="range" min="10" max="200" step="5"
+                      value={lengthCm}
+                      aria-valuetext={`${lengthCm} centimetres`}
+                      onChange={(event) => { setLengthCm(Number(event.target.value)); setFocus("length"); }}
+                      style={{ background: `linear-gradient(90deg, #0284c7 ${lengthPct}%, #e2e8f0 ${lengthPct}%)` }}
+                    />
+                  </label>
+                </div>
+              </div>
+              <p className="mt-3 text-sm text-slate-600">Doubling the diameter makes the area four times larger, so wire resistance falls to a quarter. Doubling the length doubles the resistance.</p>
+              <p className="text-sm text-slate-500">直徑加一倍，截面積變四倍，電線電阻剩四分之一。長度加一倍，電阻也加一倍。</p>
+                    </section>
+                  )}
+
+                  {deckTab === "notes" && (
+                    <div className="space-y-4">
+                      <WaterCard model={model} currentRef={currentRef} />
+                      <FormulaCard model={model} />
+                      <p className="text-xs leading-5 text-slate-500">
+                        Classroom model, not a measured lab result. Each bulb is a fixed {BULB_OHMS} Ω. Copper ρ = {sci(RHO.copper)} Ω·m. Nichrome ρ = {sci(RHO.nichrome)} Ω·m. This first model is one series loop.
+                        課堂模型：每顆燈泡固定 {BULB_OHMS} Ω。這個第一版只有一條串聯回路。
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </aside>
+        </main>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
