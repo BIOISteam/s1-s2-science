@@ -1,0 +1,1105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Integrated Science: Force & Motion Simulator</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+
+    <style>
+        :root {
+            --road-color: #475569;
+            --road-line: #f59e0b;
+            --road-border: #cbd5e1;
+        }
+
+        * {
+            box-sizing: border-box;
+            font-family: 'DM Sans', sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            background-color: #f1f5f9;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        h1 {
+            color: #0f172a;
+            margin-bottom: 5px;
+            font-size: 32px;
+            text-align: center;
+            font-weight: 700;
+        }
+
+        .subtitle {
+            color: #475569;
+            margin-bottom: 30px;
+            font-size: 16px;
+            text-align: center;
+        }
+
+        .simulator-container {
+            width: 100%;
+            max-width: 1200px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.06);
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+
+        /* Top monitoring area: animation left, graph right */
+        .simulation-monitor-row {
+            display: grid;
+            grid-template-columns: 1.35fr 0.65fr;
+            gap: 20px;
+            align-items: stretch;
+        }
+
+        /* Animation Area */
+        #track-container {
+            width: 100%;
+            height: 320px;
+            background: linear-gradient(to bottom, #bae6fd 0%, #e0f2fe 70%, #64748b 70%);
+            position: relative;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 3px solid #cbd5e1;
+        }
+
+        .sky-bg {
+            position: absolute;
+            width: 200%;
+            height: 100px;
+            top: 20px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="40" viewBox="0 0 100 40"><path d="M20,30 Q30,15 45,25 Q55,10 70,25 Q85,15 90,30 Z" fill="%23ffffff" opacity="0.6"/></svg>');
+            background-repeat: repeat-x;
+            animation: wind 180s linear infinite;
+        }
+
+        .mountain-bg {
+            position: absolute;
+            width: 200%;
+            height: 80px;
+            bottom: 84px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="200" height="80" viewBox="0 0 200 80"><polygon points="0,80 50,20 100,60 150,10 200,80" fill="%23cbd5e1"/></svg>');
+            background-repeat: repeat-x;
+        }
+
+        .tree-bg {
+            position: absolute;
+            width: 200%;
+            height: 60px;
+            bottom: 84px;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><polygon points="30,10 15,40 25,40 10,55 50,55 35,40 45,40" fill="%23059669"/></svg>');
+            background-repeat: repeat-x;
+            z-index: 1;
+        }
+
+        #road {
+            position: absolute;
+            width: 200%;
+            height: 84px;
+            bottom: 0;
+            background-color: var(--road-color);
+            border-top: 6px solid var(--road-border);
+            z-index: 2;
+        }
+
+        #road-lines {
+            width: 100%;
+            height: 6px;
+            border-top: 6px dashed var(--road-line);
+            position: absolute;
+            top: 32px;
+        }
+
+        #rocky-overlay {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 40 40"><rect width="20" height="20" fill="none" stroke="%23451a03" stroke-width="2" opacity="0.15"/><rect x="20" y="20" width="20" height="20" fill="none" stroke="%23451a03" stroke-width="2" opacity="0.15"/></svg>');
+            display: none;
+            z-index: 3;
+            pointer-events: none;
+        }
+
+        /* Vehicle System */
+        #vehicle-system {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 240px;
+            height: 140px;
+            z-index: 10;
+        }
+
+        #truck {
+            position: absolute;
+            bottom: 12px;
+            left: 40px;
+            width: 160px;
+            height: 80px;
+            z-index: 5;
+        }
+
+        .truck-cabin {
+            fill: #0284c7;
+            stroke: #0369a1;
+            stroke-width: 3;
+        }
+
+        .truck-cargo {
+            fill: #f8fafc;
+            stroke: #cbd5e1;
+            stroke-width: 3;
+        }
+
+        .truck-wheel-well {
+            fill: #334155;
+        }
+
+        .truck-window {
+            fill: #e0f2fe;
+            stroke: #0369a1;
+            stroke-width: 2;
+        }
+
+        .tire {
+            width: 36px;
+            height: 36px;
+            background: radial-gradient(circle, #475569 30%, #1e293b 70%);
+            border: 4px dashed #94a3b8;
+            border-radius: 50%;
+            position: absolute;
+            bottom: 0px;
+            z-index: 6;
+            transition: transform 0.05s linear;
+        }
+
+        #front-tire {
+            left: 146px;
+        }
+
+        #rear-tire {
+            left: 58px;
+        }
+
+        /* Vector Arrows */
+        .vector-label {
+            position: absolute;
+            font-size: 13px;
+            font-weight: 700;
+            padding: 3px 6px;
+            border-radius: 4px;
+            color: white;
+            white-space: nowrap;
+            pointer-events: none;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        /* Forward Traction (Friction) Arrows pointing RIGHT at bottom of tyres */
+        #friction-rear-arrow {
+            position: absolute;
+            height: 8px;
+            background-color: #22c55e;
+            top: 128px;
+            left: 76px;
+            transform-origin: left center;
+            z-index: 12;
+            display: flex;
+            align-items: center;
+        }
+
+        #friction-rear-arrow::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            width: 0;
+            height: 0;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-left: 10px solid #22c55e;
+        }
+
+        #friction-front-arrow {
+            position: absolute;
+            height: 8px;
+            background-color: #22c55e;
+            top: 128px;
+            left: 164px;
+            transform-origin: left center;
+            z-index: 12;
+            display: flex;
+            align-items: center;
+        }
+
+        #friction-front-arrow::after {
+            content: '';
+            position: absolute;
+            right: -8px;
+            width: 0;
+            height: 0;
+            border-top: 8px solid transparent;
+            border-bottom: 8px solid transparent;
+            border-left: 10px solid #22c55e;
+        }
+
+        #friction-label {
+            background-color: #22c55e;
+            left: 15px;
+            top: -25px;
+        }
+
+        /* Backward Air Resistance Arrow pointing LEFT from center-top of truck */
+        #push-arrow {
+            position: absolute;
+            height: 10px;
+            background-color: #ef4444;
+            top: 60px;
+            left: 120px;
+            transform-origin: left center;
+            transform: rotate(180deg);
+            z-index: 12;
+            display: flex;
+            align-items: center;
+        }
+
+        #push-arrow::after {
+            content: '';
+            position: absolute;
+            right: -10px;
+            width: 0;
+            height: 0;
+            border-top: 10px solid transparent;
+            border-bottom: 10px solid transparent;
+            border-left: 12px solid #ef4444;
+        }
+
+        #push-label {
+            background-color: #ef4444;
+            right: 15px;
+            top: -25px;
+            transform: rotate(180deg);
+        }
+
+        /* Graph Panel Beside Animation */
+        .graph-panel {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 18px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .graph-panel .panel-title {
+            font-size: 16px;
+            margin-bottom: 12px;
+        }
+
+        .graph-wrapper {
+            flex: 1;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 10px;
+            min-height: 230px;
+        }
+
+        #distanceTimeGraph {
+            width: 100%;
+            height: 240px;
+            display: block;
+        }
+
+        .graph-note {
+            margin-top: 8px;
+            color: #64748b;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        /* Dashboard */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 1.12fr 0.88fr;
+            gap: 25px;
+        }
+
+        .panel {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 16px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .panel-title {
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 18px;
+            font-size: 18px;
+            border-bottom: 2px solid #e2e8f0;
+            padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .panel-title i {
+            color: #0ea5e9;
+        }
+
+        .surface-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .surface-btn {
+            padding: 12px;
+            border: 2px solid #cbd5e1;
+            background: white;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 600;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .surface-btn.active {
+            border-color: #0ea5e9;
+            background-color: #f0f9ff;
+            color: #0369a1;
+        }
+
+        .surface-btn i {
+            font-size: 20px;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .slider-wrapper {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slider-header label {
+            font-weight: 600;
+            color: #475569;
+            font-size: 15px;
+        }
+
+        .slider-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .slider-control input {
+            flex-grow: 1;
+            accent-color: #0ea5e9;
+            height: 6px;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+
+        .value-display {
+            width: 65px;
+            font-weight: 700;
+            text-align: right;
+            color: #0f172a;
+            font-size: 16px;
+            background: #e2e8f0;
+            padding: 3px 8px;
+            border-radius: 6px;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button.action-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .btn-preset {
+            background: #e2e8f0;
+            color: #334155;
+            border: 1px solid #cbd5e1 !important;
+        }
+
+        .btn-preset:hover {
+            background: #cbd5e1;
+        }
+
+        #btn-reset {
+            background: #ef4444;
+            color: white;
+        }
+
+        #btn-reset:hover {
+            background: #dc2626;
+        }
+
+        .status-box {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: 100%;
+            justify-content: center;
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: white;
+            border-radius: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .status-label {
+            color: #64748b;
+            font-weight: 600;
+            font-size: 15px;
+        }
+
+        .status-val {
+            font-weight: 700;
+            color: #0f172a;
+            font-size: 18px;
+        }
+
+        .motion-uniform {
+            background: #dcfce7 !important;
+            color: #15803d !important;
+            border-color: #bbf7d0 !important;
+        }
+
+        .motion-nonuniform {
+            background: #fef9c3 !important;
+            color: #a16207 !important;
+            border-color: #fef08a !important;
+        }
+
+        .motion-rest {
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            border-color: #cbd5e1 !important;
+        }
+
+        .translation-footnote {
+            margin-top: 15px;
+            font-size: 13px;
+            color: #64748b;
+            text-align: center;
+            border-top: 1px dashed #e2e8f0;
+            padding-top: 12px;
+            line-height: 1.4;
+        }
+
+        @keyframes wind {
+            from {
+                background-position-x: 0px;
+            }
+            to {
+                background-position-x: 2000px;
+            }
+        }
+
+        @media (max-width: 950px) {
+            .simulation-monitor-row {
+                grid-template-columns: 1fr;
+            }
+
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            #distanceTimeGraph {
+                height: 260px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Interactive Force & Motion Laboratory</h1>
+    <div class="subtitle">Junior Science Study Tool — Understanding Balanced Forces (平衡力與運動狀態)</div>
+
+    <div class="simulator-container">
+
+        <div class="simulation-monitor-row">
+
+            <div id="track-container">
+                <div class="sky-bg"></div>
+                <div id="mountains" class="mountain-bg"></div>
+                <div id="trees" class="tree-bg"></div>
+                
+                <div id="road">
+                    <div id="rocky-overlay"></div>
+                    <div id="road-lines"></div>
+                </div>
+                
+                <div id="vehicle-system">
+                    <div id="push-arrow">
+                        <span id="push-label" class="vector-label">Air Resistance (空氣阻力)</span>
+                    </div>
+
+                    <div id="friction-rear-arrow"></div>
+
+                    <div id="friction-front-arrow">
+                        <span id="friction-label" class="vector-label">Friction / Traction (摩擦力 / 牽引力)</span>
+                    </div>
+
+                    <svg id="truck" viewBox="0 0 160 80">
+                        <circle cx="58" cy="65" r="21" class="truck-wheel-well" />
+                        <circle cx="146" cy="65" r="21" class="truck-wheel-well" />
+                        
+                        <rect x="10" y="15" width="90" height="45" rx="3" class="truck-cargo" />
+                        <line x1="25" y1="15" x2="25" y2="60" stroke="#cbd5e1" stroke-width="2" />
+                        <line x1="50" y1="15" x2="50" y2="60" stroke="#cbd5e1" stroke-width="2" />
+                        <line x1="75" y1="15" x2="75" y2="60" stroke="#cbd5e1" stroke-width="2" />
+
+                        <path d="M100,60 L100,28 L130,28 L154,46 L154,60 Z" class="truck-cabin" />
+                        <path d="M110,34 L128,34 L144,46 L110,46 Z" class="truck-window" />
+                        <rect x="150" y="50" width="4" height="6" fill="#fef08a" />
+                    </svg>
+
+                    <div id="rear-tire" class="tire"></div>
+                    <div id="front-tire" class="tire"></div>
+                </div>
+            </div>
+
+            <div class="graph-panel">
+                <div class="panel-title">
+                    <i class="fa-solid fa-chart-area"></i>
+                    <span>Distance-Time Graph<br>距離—時間圖</span>
+                </div>
+
+                <div class="graph-wrapper">
+                    <canvas id="distanceTimeGraph"></canvas>
+                </div>
+
+                <div class="graph-note">
+                    <strong>Real-time monitoring</strong><br>
+                    Steeper curve = higher velocity<br>
+                    曲線越斜，速度越大。<br>
+                    Straight rising line = uniform motion<br>
+                    斜直線代表勻速運動。
+                </div>
+            </div>
+        </div>
+
+        <div class="dashboard">
+
+            <div class="panel">
+                <div>
+                    <div class="panel-title">
+                        <i class="fa-solid fa-road"></i>
+                        1. Select Road Surface (選擇路面)
+                    </div>
+
+                    <div class="surface-selector">
+                        <div id="surf-standard" class="surface-btn active" onclick="selectSurface('standard')">
+                            <i class="fa-solid fa-car-side"></i>
+                            <span>Standard Highway (公路)</span>
+                        </div>
+
+                        <div id="surf-rocky" class="surface-btn" onclick="selectSurface('rocky')">
+                            <i class="fa-solid fa-gem"></i>
+                            <span>Rocky Road (崎嶇石路)</span>
+                        </div>
+                    </div>
+
+                    <div class="panel-title">
+                        <i class="fa-solid fa-sliders"></i>
+                        2. Adjust Force Values (調整力大小)
+                    </div>
+
+                    <div class="control-group">
+                        <div class="slider-wrapper">
+                            <div class="slider-header">
+                                <label>Applied Driving Force (引擎驅動力)</label>
+                            </div>
+
+                            <div class="slider-control">
+                                <input type="range" id="slider-push" min="0" max="20" value="0" step="0.5">
+                                <span id="val-push" class="value-display">0 N</span>
+                            </div>
+                        </div>
+
+                        <div class="slider-wrapper">
+                            <div class="slider-header">
+                                <label id="label-friction-slider">Max Air Resistance Limit (最大阻力限制)</label>
+                            </div>
+
+                            <div class="slider-control">
+                                <input type="range" id="slider-friction" min="0" max="20" value="4" step="0.5">
+                                <span id="val-friction" class="value-display">4 N</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-group">
+                    <button class="action-btn btn-preset" onclick="setPreset(0, 4)">Reset to Rest</button>
+                    <button class="action-btn btn-preset" onclick="makeBalanced()">Equalize Forces</button>
+                    <button id="btn-reset" class="action-btn" onclick="emergencyBrake()">Brake (煞車)</button>
+                </div>
+            </div>
+
+            <div class="panel">
+                <div>
+                    <div class="panel-title">
+                        <i class="fa-solid fa-chart-line"></i>
+                        Analytics Dashboard (數據分析面板)
+                    </div>
+
+                    <div class="status-box">
+                        <div class="status-item">
+                            <span class="status-label">Forward Friction / Traction (前向摩擦力):</span>
+                            <span id="stat-push" class="status-val">0.0 N</span>
+                        </div>
+
+                        <div class="status-item">
+                            <span class="status-label">Opposing Air Resistance (空氣阻力):</span>
+                            <span id="stat-friction" class="status-val">0.0 N</span>
+                        </div>
+
+                        <div class="status-item">
+                            <span class="status-label">Net Force (合力):</span>
+                            <span id="stat-netforce" class="status-val">0.0 N</span>
+                        </div>
+
+                        <div class="status-item">
+                            <span class="status-label">Current Velocity (速度):</span>
+                            <span id="stat-velocity" class="status-val">0.00 m/s</span>
+                        </div>
+
+                        <div class="status-item">
+                            <span class="status-label">Distance Travelled (行駛距離):</span>
+                            <span id="stat-distance" class="status-val">0.00 m</span>
+                        </div>
+
+                        <div class="status-item" style="flex-direction: column; align-items: flex-start; gap: 5px;">
+                            <span class="status-label">Motion Condition (運動狀態):</span>
+                            <span id="stat-motion" class="status-val motion-rest" style="width: 100%; text-align: center; margin-top: 4px;">
+                                At Rest (靜止狀態)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="translation-footnote">
+                    💡 <strong>Balanced Forces (平衡力):</strong>
+                    Forward Friction = Air Resistance. If already moving, it stays in
+                    <strong>Uniform Motion</strong> (勻速運動) because Net Force is 0.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Physics configuration
+        let velocity = 0;
+        let position = 0;
+        let tireRotation = 0;
+        const mass = 12;
+
+        // Time configuration
+        let simulationTime = 0;
+        const dt = 0.033;
+        let graphData = [];
+
+        // Parallax scroll tracking (Smoothed down ratios)
+        let mountainOffset = 0;
+        let treeOffset = 0;
+        let roadOffset = 0;
+
+        // Active road surface
+        let activeSurface = 'standard';
+
+        // DOM elements
+        const sliderPush = document.getElementById('slider-push');
+        const sliderFriction = document.getElementById('slider-friction');
+        const valPush = document.getElementById('val-push');
+        const valFriction = document.getElementById('val-friction');
+
+        const pushArrow = document.getElementById('push-arrow');
+        const frictionRearArrow = document.getElementById('friction-rear-arrow');
+        const frictionFrontArrow = document.getElementById('friction-front-arrow');
+        const frictionLabel = document.getElementById('friction-label');
+        const pushLabel = document.getElementById('push-label');
+        
+        const frontTire = document.getElementById('front-tire');
+        const rearTire = document.getElementById('rear-tire');
+        
+        const mtnLayer = document.getElementById('mountains');
+        const treeLayer = document.getElementById('trees');
+        const roadLayer = document.getElementById('road');
+        const rockyOverlay = document.getElementById('rocky-overlay');
+
+        const statPush = document.getElementById('stat-push');
+        const statFriction = document.getElementById('stat-friction');
+        const statNetForce = document.getElementById('stat-netforce');
+        const statVelocity = document.getElementById('stat-velocity');
+        const statDistance = document.getElementById('stat-distance');
+        const statMotion = document.getElementById('stat-motion');
+
+        const graphCanvas = document.getElementById('distanceTimeGraph');
+        const graphCtx = graphCanvas.getContext('2d');
+
+        // Dynamic Resize Buffer syncing logic
+        function resizeCanvas() {
+            const rect = graphCanvas.getBoundingClientRect();
+            graphCanvas.width = rect.width;
+            graphCanvas.height = rect.height;
+            drawDistanceTimeGraph();
+        }
+        window.addEventListener('load', resizeCanvas);
+        window.addEventListener('resize', resizeCanvas);
+
+        function selectSurface(type) {
+            activeSurface = type;
+
+            const standardBtn = document.getElementById('surf-standard');
+            const rockyBtn = document.getElementById('surf-rocky');
+
+            if (type === 'standard') {
+                standardBtn.classList.add('active');
+                rockyBtn.classList.remove('active');
+
+                rockyOverlay.style.display = 'none';
+
+                document.documentElement.style.setProperty('--road-color', '#475569');
+                document.documentElement.style.setProperty('--road-border', '#cbd5e1');
+                document.documentElement.style.setProperty('--road-line', '#f59e0b');
+
+                sliderFriction.value = 4;
+            } else if (type === 'rocky') {
+                rockyBtn.classList.add('active');
+                standardBtn.classList.remove('active');
+
+                rockyOverlay.style.display = 'block';
+
+                document.documentElement.style.setProperty('--road-color', '#78350f');
+                document.documentElement.style.setProperty('--road-border', '#b45309');
+                document.documentElement.style.setProperty('--road-line', '#f59e0b');
+
+                sliderFriction.value = 10;
+            }
+        }
+
+        // Clean light-theme graph canvas rendering
+        function drawDistanceTimeGraph() {
+            const ctx = graphCtx;
+            const w = graphCanvas.width;
+            const h = graphCanvas.height;
+
+            if (!w || !h) return;
+
+            ctx.clearRect(0, 0, w, h);
+
+            const marginLeft = 52;
+            const marginRight = 20;
+            const marginTop = 20;
+            const marginBottom = 45;
+
+            const plotW = w - marginLeft - marginRight;
+            const plotH = h - marginTop - marginBottom;
+
+            // Background
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, w, h);
+
+            // Clean Slate Gray Grid lines
+            ctx.strokeStyle = "#e2e8f0";
+            ctx.lineWidth = 1;
+
+            for (let i = 0; i <= 5; i++) {
+                const y = marginTop + (plotH / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(marginLeft, y);
+                ctx.lineTo(w - marginRight, y);
+                ctx.stroke();
+            }
+
+            for (let i = 0; i <= 5; i++) {
+                const x = marginLeft + (plotW / 5) * i;
+                ctx.beginPath();
+                ctx.moveTo(x, marginTop);
+                ctx.lineTo(x, h - marginBottom);
+                ctx.stroke();
+            }
+
+            // Axes
+            ctx.strokeStyle = "#334155";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(marginLeft, marginTop);
+            ctx.lineTo(marginLeft, h - marginBottom);
+            ctx.lineTo(w - marginRight, h - marginBottom);
+            ctx.stroke();
+
+            // Labels Titles
+            ctx.fillStyle = "#0f172a";
+            ctx.font = "bold 11px DM Sans";
+            ctx.fillText("Distance / m", 8, 12);
+            ctx.fillText("Time / s", w - 55, h - 12);
+
+            if (graphData.length < 2) {
+                ctx.fillStyle = "#64748b";
+                ctx.font = "12px DM Sans";
+                ctx.fillText("Graph starts when simulation runs.", marginLeft + 12, marginTop + 35);
+                return;
+            }
+
+            const timeWindow = 20;
+            const latestTime = graphData[graphData.length - 1].t;
+            const minTime = Math.max(0, latestTime - timeWindow);
+            const visibleData = graphData.filter(point => point.t >= minTime);
+
+            // Stable cumulative bottom locking (baseline fixed at 0)
+            const distances = visibleData.map(point => point.d);
+            const minDistance = 0; 
+            const maxDistance = Math.max(5, ...distances);
+            const distanceRange = maxDistance;
+
+            // Y-axis numerical values
+            ctx.fillStyle = "#64748b";
+            ctx.font = "10px DM Sans";
+            ctx.textAlign = 'right';
+
+            for (let i = 0; i <= 5; i++) {
+                const value = maxDistance - (distanceRange / 5) * i;
+                const y = marginTop + (plotH / 5) * i;
+                ctx.fillText(value.toFixed(1), marginLeft - 8, y + 3);
+            }
+
+            // X-axis numerical values
+            ctx.textAlign = 'center';
+            for (let i = 0; i <= 5; i++) {
+                const value = minTime + ((Math.max(timeWindow, latestTime - minTime)) / 5) * i;
+                const x = marginLeft + (plotW / 5) * i;
+                ctx.fillText(value.toFixed(1), x, h - marginBottom + 18);
+            }
+
+            // Dynamic curve plot line
+            ctx.strokeStyle = "#0ea5e9";
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+
+            visibleData.forEach((point, index) => {
+                const x = marginLeft + ((point.t - minTime) / Math.max(timeWindow, latestTime - minTime)) * plotW;
+                const y = h - marginBottom - ((point.d - minDistance) / distanceRange) * plotH;
+
+                if (index === 0) {
+                    ctx.moveTo(x, y);
+                } else {
+                    ctx.lineTo(x, y);
+                }
+            });
+
+            ctx.stroke();
+
+            // Tracking pointer
+            const lastPoint = visibleData[visibleData.length - 1];
+            const lastX = marginLeft + ((lastPoint.t - minTime) / Math.max(timeWindow, latestTime - minTime)) * plotW;
+            const lastY = h - marginBottom - ((lastPoint.d - minDistance) / distanceRange) * plotH;
+
+            ctx.fillStyle = "#ef4444";
+            ctx.beginPath();
+            ctx.arc(lastX, lastY, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function updatePhysicsLoop() {
+            let push = parseFloat(sliderPush.value);
+            let maxFrictionLimit = parseFloat(sliderFriction.value);
+
+            valPush.innerText = push.toFixed(1) + " N";
+            valFriction.innerText = maxFrictionLimit.toFixed(1) + " N";
+
+            // Map variables:
+            // Forward force (push) is now the tire Friction/Traction (Green Arrow pointing right)
+            // Opposing force (maxFrictionLimit) is now Air Resistance (Red Arrow pointing left)
+            const scale = 7.5;
+            
+            let activeOpposingForce = 0;
+            let netForce = 0;
+
+            if (velocity === 0) {
+                if (push > maxFrictionLimit) {
+                    activeOpposingForce = maxFrictionLimit;
+                    netForce = push - maxFrictionLimit;
+                } else {
+                    activeOpposingForce = push;
+                    netForce = 0;
+                }
+            } else {
+                activeOpposingForce = maxFrictionLimit;
+                netForce = push - maxFrictionLimit;
+            }
+
+            // Render forward traction vectors (Green) at both tires
+            let individualTireFrictionScale = (push / 2) * scale;
+            frictionRearArrow.style.width = individualTireFrictionScale + "px";
+            frictionFrontArrow.style.width = individualTireFrictionScale + "px";
+
+            // Render backward Air Resistance vector (Red) pointing left from body
+            pushArrow.style.width = (activeOpposingForce * scale) + "px";
+
+            // Toggle Label visibility
+            frictionLabel.style.opacity = push > 0 ? 1 : 0;
+            pushLabel.style.opacity = activeOpposingForce > 0 ? 1 : 0;
+
+            // Physics calculation
+            let acceleration = netForce / mass;
+
+            // Stable responsive step frame multiplication
+            velocity += acceleration * dt * 30;
+
+            if (velocity < 0) {
+                velocity = 0;
+            }
+
+            position += velocity * dt;
+            simulationTime += dt;
+
+            graphData.push({
+                t: simulationTime,
+                d: position
+            });
+
+            if (graphData.length > 1000) {
+                graphData.shift();
+            }
+
+            // Calm, proportional parallax animation multipliers
+            if (velocity > 0) {
+                roadOffset -= velocity * 0.7;
+                treeOffset -= velocity * 0.25;
+                mountainOffset -= velocity * 0.05;
+
+                if (roadOffset <= -100) roadOffset = 0;
+                if (treeOffset <= -100) treeOffset = 0;
+                if (mountainOffset <= -100) mountainOffset = 0;
+
+                roadLayer.style.backgroundPositionX = roadOffset + "px";
+                treeLayer.style.backgroundPositionX = treeOffset + "px";
+                mtnLayer.style.backgroundPositionX = mountainOffset + "px";
+
+                tireRotation += velocity * 2.5;
+                frontTire.style.transform = `rotate(${tireRotation}deg)`;
+                rearTire.style.transform = `rotate(${tireRotation}deg)`;
+            }
+
+            // Dashboard updates
+            statPush.innerText = push.toFixed(1) + " N";
+            statFriction.innerText = activeOpposingForce.toFixed(1) + " N";
+            statNetForce.innerText = netForce.toFixed(1) + " N" + (netForce === 0 ? " (Balanced 平衡)" : "");
+            statVelocity.innerText = (velocity * 3).toFixed(1) + " m/s"; // Scaled slightly for junior science visual feedback
+            statDistance.innerText = position.toFixed(2) + " m";
+
+            if (velocity === 0) {
+                statMotion.innerText = "At Rest (靜止狀態)";
+                statMotion.className = "status-val motion-rest";
+            } else if (netForce === 0 && velocity > 0) {
+                statMotion.innerText = "Uniform Motion (勻速運動)";
+                statMotion.className = "status-val motion-uniform";
+            } else {
+                statMotion.innerText = "Non-Uniform Motion (變速運動)";
+                statMotion.className = "status-val motion-nonuniform";
+            }
+
+            drawDistanceTimeGraph();
+        }
+
+        function resetGraphAndMotion() {
+            velocity = 0;
+            position = 0;
+            simulationTime = 0;
+            graphData = [];
+
+            roadOffset = 0;
+            treeOffset = 0;
+            mountainOffset = 0;
+            tireRotation = 0;
+
+            roadLayer.style.backgroundPositionX = "0px";
+            treeLayer.style.backgroundPositionX = "0px";
+            mtnLayer.style.backgroundPositionX = "0px";
+
+            frontTire.style.transform = "rotate(0deg)";
+            rearTire.style.transform = "rotate(0deg)";
+
+            drawDistanceTimeGraph();
+        }
+
+        function setPreset(p, f) {
+            sliderPush.value = p;
+            sliderFriction.value = f;
+
+            if (p === 0) {
+                resetGraphAndMotion();
+            }
+        }
+
+        function makeBalanced() {
+            sliderFriction.value = sliderPush.value;
+        }
+
+        function emergencyBrake() {
+            sliderPush.value = 0;
+            sliderFriction.value = 15;
+        }
+
+        // Initialize setup on run
+        resizeCanvas();
+        setInterval(updatePhysicsLoop, 33);
+    </script>
+</body>
+</html>
