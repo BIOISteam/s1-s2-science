@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Series and Parallel Circuits | S1-S2 Integrated Science</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    html, body, #root { height: 100%; }
+    body {
+      margin: 0;
+      overflow: hidden;
+      font-family: Inter, "PingFang TC", "Microsoft JhengHei", "Noto Sans TC", sans-serif;
+      background:
+        radial-gradient(1000px 420px at 0% -10%, #dbeafe 0%, transparent 55%),
+        radial-gradient(800px 380px at 100% 0%, #ede9fe 0%, transparent 50%),
+        #f3f6fb;
+      color: #0f172a;
+    }
+    .stage-shell {
+      box-sizing: border-box;
+      height: 100%;
+      display: flex;
+      gap: 12px;
+      padding: 12px;
+    }
+    .stage {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .twin {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    .deck {
+      flex: none;
+      min-height: 0;
+      display: flex;
+      width: 72px;
+      transition: width 0.28s ease, height 0.28s ease;
+    }
+    .deck.is-open { width: min(400px, 36vw); }
+    .deck-panel {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      overflow: hidden;
+      border-radius: 24px;
+      background: #fff;
+      box-shadow: 0 16px 48px rgba(15, 23, 42, 0.16);
+    }
+    .deck-rail {
+      box-sizing: border-box;
+      width: 72px;
+      flex: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 8px 6px;
+      background: #0f172a;
+    }
+    .deck-toggle, .deck-tab {
+      border: 0;
+      cursor: pointer;
+      border-radius: 12px;
+      font-weight: 650;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+    }
+    .deck-toggle {
+      background: #f59e0b;
+      color: #0f172a;
+      padding: 12px 6px;
+    }
+    .deck-tab {
+      background: transparent;
+      color: #cbd5e1;
+      padding: 14px 4px;
+      font-size: 15px;
+      letter-spacing: 0.04em;
+    }
+    .deck-tab[aria-selected="true"] {
+      background: #fff;
+      color: #0f172a;
+    }
+    .deck-body {
+      flex: 1;
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+      padding: 14px 14px 20px;
+      background: #fff;
+    }
+    .bulb-hit { cursor: pointer; outline: none; }
+    .bulb-hit .hit { stroke: transparent; }
+    .bulb-hit:hover .hit { stroke: #cbd5e1; stroke-width: 2; }
+    .bulb-hit:focus-visible .hit { stroke: #0284c7; stroke-width: 2.5; }
+    .meter-text {
+      paint-order: stroke;
+      stroke: #fff;
+      stroke-width: 4px;
+      stroke-linejoin: round;
+    }
+    @media (max-width: 1000px) {
+      .stage { overflow-y: auto; }
+      .twin { flex: none; grid-template-columns: 1fr; }
+      .twin > section { min-height: 460px; }
+    }
+    @media (max-width: 840px) {
+      .stage-shell { flex-direction: column; }
+      .deck, .deck.is-open { width: 100%; height: 52px; }
+      .deck.is-open { height: min(48vh, 460px); }
+      .deck-panel { flex-direction: column; }
+      .deck-rail {
+        width: auto;
+        height: 52px;
+        flex-direction: row;
+        align-items: center;
+      }
+      .deck-toggle, .deck-tab {
+        writing-mode: horizontal-tb;
+        transform: none;
+        padding: 8px 12px;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .deck { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useEffect, useLayoutEffect, useMemo, useRef, useState } = React;
+
+    const CELL_VOLTS = 1.5;
+    const MAX_CELLS = 4;
+    const MAX_BULBS = 3;
+    const OHM_CHOICES = [2, 3, 6];
+    const LOW_RGB = [226, 232, 240];
+    const HIGH_RGB = [124, 58, 237];
+
+    const SERIES = { left: 60, right: 430, top: 90, bottom: 270, r: 18, mid: 180, bulbR: 17 };
+    const PARALLEL = { cellX: 50, top: 40, bottom: 300, busL: 140, busR: 430, bulbX: 330, meterX: 205, mid: 170, bulbR: 17 };
+
+    const trim = (n) => String(Number(n.toFixed(2)));
+    const fmtA = (i) => `${i.toFixed(2)} A`;
+    const fmtV = (v) => `${v.toFixed(1)} V`;
+    const fmtR = (r) => (Number.isFinite(r) ? `${trim(r)} Ω` : "∞ Ω");
+
+    function potColor(v, V) {
+      if (v === null || v === undefined || V <= 0) return "#cbd5e1";
+      const t = Math.max(0, Math.min(1, v / V));
+      const rgb = LOW_RGB.map((low, i) => Math.round(low + (HIGH_RGB[i] - low) * t));
+      return `rgb(${rgb.join(",")})`;
+    }
+
+    function glowOf(power) {
+      return power > 0 ? Math.min(1.4, Math.sqrt(power / 8)) : 0;
+    }
+
+    function filamentColor(glow) {
+      if (glow < 0.08) return "#64748b";
+      if (glow < 0.45) return "#f59e0b";
+      return "#fff7ed";
+    }
+
+    function cellSpan(cells) {
+      return (cells - 1) * 14 + 6;
+    }
+
+    function computeModel({ cells, count, ohms, seriesOut, parallelOut }) {
+      const V = cells * CELL_VOLTS;
+      const idx = Array.from({ length: count }, (_, i) => i);
+
+      const sOut = idx.map((i) => seriesOut[i]);
+      const outIdx = idx.filter((i) => sOut[i]);
+      const open = outIdx.length > 0;
+      const seriesR = count * ohms;
+      const sI = open ? 0 : V / seriesR;
+      const sBulbV = idx.map((i) => {
+        if (!open) return sI * ohms;
+        if (outIdx.length === 1) return sOut[i] ? V : 0;
+        return sOut[i] ? null : 0;
+      });
+      const first = open ? outIdx[0] : -1;
+      const last = open ? outIdx[outIdx.length - 1] : -1;
+      const segPot = Array.from({ length: count + 1 }, (_, k) => {
+        if (!open) return V - k * sI * ohms;
+        if (k <= first) return V;
+        if (k > last) return 0;
+        return null;
+      });
+
+      const pOut = idx.map((i) => parallelOut[i]);
+      const branchI = idx.map((i) => (pOut[i] ? 0 : V / ohms));
+      const mainI = branchI.reduce((sum, i) => sum + i, 0);
+      const intact = pOut.filter((out) => !out).length;
+
+      return {
+        V,
+        cells,
+        count,
+        ohms,
+        series: {
+          out: sOut,
+          open,
+          outCount: outIdx.length,
+          R: open ? Infinity : seriesR,
+          I: sI,
+          bulbV: sBulbV,
+          power: idx.map(() => sI * sI * ohms),
+          segPot,
+        },
+        parallel: {
+          out: pOut,
+          branchI,
+          mainI,
+          intact,
+          R: intact ? ohms / intact : Infinity,
+          bulbV: idx.map(() => V),
+          power: idx.map((i) => (pOut[i] ? 0 : (V * V) / ohms)),
+        },
+      };
+    }
+
+    function FlowDots({ d, current, color, spacing = 44, offset = 0 }) {
+      const pathRef = useRef(null);
+      const dotRefs = useRef([]);
+      const currentRef = useRef(current);
+      currentRef.current = current;
+      const [count, setCount] = useState(0);
+      const flowing = current > 0;
+
+      useLayoutEffect(() => {
+        const path = pathRef.current;
+        if (path) setCount(Math.max(4, Math.round(path.getTotalLength() / spacing)));
+      }, [d, spacing]);
+
+      useEffect(() => {
+        const path = pathRef.current;
+        if (!path || !count) return undefined;
+        const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+        const phases = Array.from({ length: count }, (_, i) => (i + offset) / count);
+        let frame = 0;
+        let last = performance.now();
+        const place = () => {
+          const len = path.getTotalLength();
+          const on = currentRef.current > 0;
+          for (let i = 0; i < count; i += 1) {
+            const node = dotRefs.current[i];
+            if (!node) continue;
+            const point = path.getPointAtLength(phases[i] * len);
+            node.setAttribute("cx", point.x.toFixed(2));
+            node.setAttribute("cy", point.y.toFixed(2));
+            node.setAttribute("opacity", on ? "1" : "0.22");
+          }
+        };
+        if (reduced) {
+          place();
+          return undefined;
+        }
+        const tick = (now) => {
+          const dt = Math.min(0.05, (now - last) / 1000);
+          last = now;
+          const len = path.getTotalLength();
+          const I = currentRef.current;
+          const speed = I > 0 ? Math.min(220, Math.max(6, I * 55)) : 0;
+          for (let i = 0; i < count; i += 1) phases[i] = (phases[i] + (dt * speed) / len) % 1;
+          place();
+          frame = requestAnimationFrame(tick);
+        };
+        frame = requestAnimationFrame(tick);
+        return () => cancelAnimationFrame(frame);
+      }, [count, d, offset, flowing]);
+
+      return (
+        <g>
+          <path ref={pathRef} d={d} fill="none" stroke="none" />
+          {Array.from({ length: count }, (_, i) => (
+            <circle
+              key={i}
+              ref={(node) => { dotRefs.current[i] = node; }}
+              r="4.2"
+              fill={color}
+              stroke="#fff"
+              strokeWidth="1.2"
+              opacity="0"
+            />
+          ))}
+        </g>
+      );
+    }
+
+    function Cell({ x, cells, mid }) {
+      const span = cellSpan(cells);
+      const top = mid - span / 2;
+      return (
+        <g>
+          {Array.from({ length: cells }, (_, i) => {
+            const y = top + i * 14;
+            return (
+              <g key={i}>
+                <line x1={x - 22} y1={y} x2={x + 22} y2={y} stroke="#0f172a" strokeWidth="2.6" />
+                <line x1={x - 12} y1={y + 6} x2={x + 12} y2={y + 6} stroke="#0f172a" strokeWidth="5.5" strokeLinecap="round" />
+              </g>
+            );
+          })}
+          <text x={x + 27} y={top + 5} fontSize="14" fontWeight="700" fill="#0f172a">+</text>
+          <text x={x + 27} y={top + span + 8} fontSize="16" fontWeight="700" fill="#0f172a">−</text>
+        </g>
+      );
+    }
+
+    function Bulb({ x, y, glow, out, name, onToggle, labelX, labelY, labelAnchor = "middle", filterId }) {
+      const lit = !out && glow > 0;
+      const r = 16;
+      return (
+        <g
+          className="bulb-hit"
+          role="button"
+          tabIndex={0}
+          aria-label={out ? `Put bulb ${name} back` : `Remove bulb ${name}`}
+          onClick={onToggle}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" || event.key === " ") {
+              event.preventDefault();
+              onToggle();
+            }
+          }}
+        >
+          <title>{out ? "Click to put the bulb back" : "Click to remove the bulb"}</title>
+          <rect x={x - 22} y={y - 6} width="44" height="12" fill="#fff" />
+          {lit && (
+            <circle cx={x} cy={y} r={20 + glow * 10} fill="#fbbf24" opacity={Math.min(0.75, glow * 0.55)} filter={`url(#${filterId})`} />
+          )}
+          {out ? (
+            <g>
+              <circle cx={x} cy={y} r={r} fill="#fff" stroke="#94a3b8" strokeWidth="2" strokeDasharray="4 4" />
+              <line x1={x - 22} y1={y} x2={x - 17} y2={y} stroke="#475569" strokeWidth="3" />
+              <line x1={x + 17} y1={y} x2={x + 22} y2={y} stroke="#475569" strokeWidth="3" />
+            </g>
+          ) : (
+            <g>
+              <circle cx={x} cy={y} r={r} fill={lit ? "#fffbeb" : "#f8fafc"} stroke="#334155" strokeWidth="2" />
+              <path
+                d={`M ${x - 7} ${y + 4} Q ${x - 3} ${y - 8} ${x} ${y + 4} Q ${x + 3} ${y - 8} ${x + 7} ${y + 4}`}
+                fill="none" stroke={filamentColor(glow)} strokeWidth="2"
+              />
+            </g>
+          )}
+          <circle className="hit" cx={x} cy={y} r="23" fill="transparent" />
+          <text x={labelX} y={labelY} textAnchor={labelAnchor} fontSize="12" fontWeight="600" fill={out ? "#64748b" : "#92400e"}>
+            {out ? `${name} removed` : name}
+          </text>
+        </g>
+      );
+    }
+
+    function Meter({ x, y, kind, text, tx, ty, anchor = "middle" }) {
+      const color = kind === "A" ? "#b45309" : "#6d28d9";
+      return (
+        <g>
+          <circle cx={x} cy={y} r="12" fill="#fff" stroke={color} strokeWidth="2" />
+          <text x={x} y={y + 4.5} textAnchor="middle" fontSize="13" fontWeight="700" fill={color}>{kind}</text>
+          <text className="meter-text" x={tx} y={ty} textAnchor={anchor} fontSize="13" fontWeight="650" fill={color}>{text}</text>
+        </g>
+      );
+    }
+
+    function VoltageHill({ V, drops, labels }) {
+      const y = (v) => 84 - (V > 0 ? v / V : 0) * 58;
+      const n = drops.length;
+      const xs = n === 1 ? [260] : drops.map((_, k) => 110 + (k * 300) / (n - 1));
+      const pts = [[16, y(0)], [52, y(0)], [52, y(V)]];
+      const marks = [];
+      let level = V;
+      drops.forEach((drop, k) => {
+        pts.push([xs[k], y(level)]);
+        const before = level;
+        level = Math.max(0, level - drop);
+        pts.push([xs[k], y(level)]);
+        marks.push({ x: xs[k], y: (y(before) + y(level)) / 2, text: labels[k] });
+      });
+      pts.push([464, y(level)]);
+      return (
+        <svg viewBox="0 0 480 100" className="h-20 w-full" role="img" aria-label="Voltage around the loop">
+          <line x1="16" x2="464" y1={y(0)} y2={y(0)} stroke="#e2e8f0" strokeDasharray="4 4" />
+          <text x="16" y="98" fontSize="11" fill="#94a3b8">0 V</text>
+          <polyline points={pts.map((p) => p.join(",")).join(" ")} fill="none" stroke="#7c3aed" strokeWidth="3" strokeLinejoin="round" />
+          <text x="58" y={y(V) - 6} fontSize="12" fontWeight="650" fill="#6d28d9">cell +{fmtV(V)}</text>
+          {marks.map((mark, k) => (
+            <text key={k} x={mark.x + 6} y={mark.y + 4} fontSize="12" fontWeight="650" fill="#6d28d9">{mark.text}</text>
+          ))}
+        </svg>
+      );
+    }
+
+    function Legend() {
+      return (
+        <span className="ml-2 inline-flex items-center gap-1.5 text-xs text-slate-500">
+          <span className="inline-block h-2 w-5 rounded-full" style={{ background: potColor(1, 1) }} />high
+          <span className="inline-block h-2 w-5 rounded-full" style={{ background: potColor(0, 1) }} />low
+        </span>
+      );
+    }
+
+    function SeriesCard({ m, lens, onToggle }) {
+      const { left: L, right: R, top: T, bottom: B, r, mid } = SERIES;
+      const s = m.series;
+      const n = m.count;
+      const span = cellSpan(m.cells);
+      const cTop = mid - span / 2;
+      const wireTop = cTop - 8;
+      const wireBot = cTop + span + 8;
+      const xs = n === 1 ? [245] : Array.from({ length: n }, (_, k) => 150 + (k * 220) / (n - 1));
+      const br = SERIES.bulbR + 1;
+      const segs = [
+        `M ${L} ${wireTop} V ${T + r} Q ${L} ${T} ${L + r} ${T} H ${xs[0] - br}`,
+        ...xs.slice(1).map((x, k) => `M ${xs[k] + br} ${T} H ${x - br}`),
+        `M ${xs[n - 1] + br} ${T} H ${R - r} Q ${R} ${T} ${R} ${T + r} V ${B - r} Q ${R} ${B} ${R - r} ${B} H ${L + r} Q ${L} ${B} ${L} ${B - r} V ${wireBot}`,
+      ];
+      const flow = `M ${L} ${wireTop} V ${T + r} Q ${L} ${T} ${L + r} ${T} H ${R - r} Q ${R} ${T} ${R} ${T + r} V ${B - r} Q ${R} ${B} ${R - r} ${B} H ${L + r} Q ${L} ${B} ${L} ${B - r} V ${wireBot}`;
+      const voltage = lens === "voltage";
+      const a1y = (T + r + wireTop) / 2;
+      const names = xs.map((_, k) => `L${k + 1}`);
+
+      let footer;
+      if (!voltage) {
+        footer = s.open
+          ? { en: "Open circuit: A1 = A2 = A3 = 0 A. With one path broken, no current flows anywhere.", zh: "斷路：唯一的路徑斷了，各處電流都是零。" }
+          : { en: `A1 = A2 = A3 = ${fmtA(s.I)}. The same current passes every point.`, zh: "串聯電路各處電流相同。" };
+      } else if (!s.open) {
+        footer = {
+          en: `${names.map((_, k) => `V${k + 1}`).join(" + ")} = ${s.bulbV.map((v) => trim(v)).join(" + ")} = ${fmtV(m.V)}, the cell voltage.`,
+          zh: "串聯時各燈泡分享電池電壓，加起來等於電池電壓。",
+        };
+      } else if (s.outCount === 1) {
+        footer = {
+          en: `The gap where the bulb was removed takes the full ${fmtV(m.V)}. The other bulbs read 0 V, because no current flows.`,
+          zh: `被移走燈泡的缺口承受全部 ${fmtV(m.V)}，其他燈泡沒有電流，讀數是 0 V。`,
+        };
+      } else {
+        footer = {
+          en: "With more than one bulb removed, the gaps share the voltage in a way a simple voltmeter cannot settle.",
+          zh: "移走多於一顆燈泡時，各缺口分到的電壓無法用簡單的伏特計確定。",
+        };
+      }
+
+      return (
+        <section className="flex min-h-0 flex-col rounded-3xl bg-white p-3 shadow-sm ring-1 ring-slate-200/80 sm:p-4">
+          <div className="mb-1 flex shrink-0 flex-wrap items-baseline justify-between gap-x-3">
+            <h2 className="text-base font-semibold">Series <span className="font-normal text-slate-500">串聯</span></h2>
+            <p className="text-xs tabular-nums text-slate-500">
+              {s.open ? "Open circuit · I = 0 A" : `Total R = ${fmtR(s.R)} · I = ${fmtA(s.I)}`}
+            </p>
+          </div>
+          <div className="min-h-0 flex-1">
+            <svg viewBox="0 0 480 340" className="block h-full w-full" role="img" aria-label="Series circuit">
+              <defs>
+                <filter id="glow-s" x="-80%" y="-80%" width="260%" height="260%">
+                  <feGaussianBlur stdDeviation="6" />
+                </filter>
+              </defs>
+              {segs.map((d, k) => (
+                <path
+                  key={k}
+                  d={d}
+                  fill="none"
+                  stroke={voltage ? potColor(s.segPot[k], m.V) : "#94a3b8"}
+                  strokeWidth={voltage ? 6 : 4}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              ))}
+              <Cell x={L} cells={m.cells} mid={mid} />
+              {!voltage && (
+                <g>
+                  <text x={L + 42} y={mid} fontSize="16" fontWeight="700" fill="#6d28d9">{fmtV(m.V)}</text>
+                  <text x={L + 42} y={mid + 17} fontSize="12" fill="#7c3aed">{m.cells} {m.cells === 1 ? "cell" : "cells"}</text>
+                </g>
+              )}
+              <FlowDots d={flow} current={s.I} color="#f59e0b" />
+              {xs.map((x, k) => (
+                <Bulb
+                  key={k}
+                  x={x}
+                  y={T}
+                  name={names[k]}
+                  out={s.out[k]}
+                  glow={glowOf(s.power[k])}
+                  onToggle={() => onToggle(k)}
+                  labelX={x}
+                  labelY={voltage ? T + 36 : T - 26}
+                  filterId="glow-s"
+                />
+              ))}
+              {!voltage && (
+                <g>
+                  <Meter x={L} y={a1y} kind="A" text={`A1 = ${fmtA(s.I)}`} tx={L + 18} ty={a1y + 4} anchor="start" />
+                  <Meter x={R} y={mid} kind="A" text={`A2 = ${fmtA(s.I)}`} tx={R - 18} ty={mid + 4} anchor="end" />
+                  <Meter x={(L + R) / 2} y={B} kind="A" text={`A3 = ${fmtA(s.I)}`} tx={(L + R) / 2} ty={B + 28} />
+                </g>
+              )}
+              {voltage && (
+                <g>
+                  <path d={`M ${L} ${wireTop - 6} H 24 V ${mid - 12} M 24 ${mid + 12} V ${wireBot + 6} H ${L}`} fill="none" stroke="#7c3aed" strokeWidth="1.6" />
+                  <Meter x={24} y={mid} kind="V" text={fmtV(m.V)} tx={24} ty={wireBot + 28} />
+                  {xs.map((x, k) => {
+                    const v = s.bulbV[k];
+                    return (
+                      <g key={k}>
+                        <path d={`M ${x - 24} ${T} V ${T - 50} H ${x - 12} M ${x + 12} ${T - 50} H ${x + 24} V ${T}`} fill="none" stroke="#7c3aed" strokeWidth="1.6" />
+                        <Meter x={x} y={T - 50} kind="V" text={`V${k + 1} = ${v === null ? "?" : fmtV(v)}`} tx={x} ty={T - 70} />
+                      </g>
+                    );
+                  })}
+                </g>
+              )}
+            </svg>
+          </div>
+          {voltage && (s.outCount <= 1) && (
+            <div className="shrink-0">
+              <VoltageHill
+                V={m.V}
+                drops={s.bulbV.map((v) => v || 0)}
+                labels={s.bulbV.map((v, k) => (v ? `${names[k]} −${fmtV(v)}` : `${names[k]} 0 V`))}
+              />
+            </div>
+          )}
+          <div className="shrink-0 text-sm">
+            <p className="tabular-nums">{footer.en}{voltage && <Legend />}</p>
+            <p className="text-slate-500">{footer.zh}</p>
+          </div>
+        </section>
+      );
+    }
+
+    function ParallelCard({ m, lens, onToggle }) {
+      const { cellX: L, top: T, bottom: B, busL, busR, bulbX: BX, meterX, mid } = PARALLEL;
+      const p = m.parallel;
+      const n = m.count;
+      const span = cellSpan(m.cells);
+      const cTop = mid - span / 2;
+      const wireTop = cTop - 8;
+      const wireBot = cTop + span + 8;
+      const ys = { 1: [170], 2: [120, 220], 3: [95, 170, 245] }[n];
+      const br = PARALLEL.bulbR + 1;
+      const voltage = lens === "voltage";
+      const highD = [
+        `M ${L} ${wireTop} V ${T} H ${busL} V ${ys[n - 1]}`,
+        ...ys.map((y) => `M ${busL} ${y} H ${BX - br}`),
+      ];
+      const lowD = [
+        ...ys.map((y) => `M ${BX + br} ${y} H ${busR}`),
+        `M ${busR} ${ys[0]} V ${B} H ${L} V ${wireBot}`,
+      ];
+      const names = ys.map((_, k) => `L${k + 1}`);
+      const wire = (high) => ({
+        fill: "none",
+        stroke: voltage ? potColor(high ? m.V : 0, m.V) : "#94a3b8",
+        strokeWidth: voltage ? 6 : 4,
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+      });
+
+      const footer = voltage
+        ? {
+          en: `${names.map((_, k) => `V${k + 1}`).join(" = ")} = ${fmtV(m.V)}. Every branch gets the full cell voltage.`,
+          zh: "並聯時每條支路都得到全部電池電壓。",
+        }
+        : {
+          en: `A = ${names.map((_, k) => `A${k + 1}`).join(" + ")} = ${p.branchI.map((i) => i.toFixed(2)).join(" + ")} = ${fmtA(p.mainI)}.`,
+          zh: "電流在分岔點分開，各支路電流加起來等於總電流。",
+        };
+
+      return (
+        <section className="flex min-h-0 flex-col rounded-3xl bg-white p-3 shadow-sm ring-1 ring-slate-200/80 sm:p-4">
+          <div className="mb-1 flex shrink-0 flex-wrap items-baseline justify-between gap-x-3">
+            <h2 className="text-base font-semibold">Parallel <span className="font-normal text-slate-500">並聯</span></h2>
+            <p className="text-xs tabular-nums text-slate-500">
+              {p.intact ? `Total R = ${fmtR(p.R)} · main I = ${fmtA(p.mainI)}` : "Every branch open · I = 0 A"}
+            </p>
+          </div>
+          <div className="min-h-0 flex-1">
+            <svg viewBox="0 0 480 340" className="block h-full w-full" role="img" aria-label="Parallel circuit">
+              <defs>
+                <filter id="glow-p" x="-80%" y="-80%" width="260%" height="260%">
+                  <feGaussianBlur stdDeviation="6" />
+                </filter>
+              </defs>
+              {highD.map((d, k) => <path key={`h${k}`} d={d} {...wire(true)} />)}
+              {lowD.map((d, k) => <path key={`l${k}`} d={d} {...wire(false)} />)}
+              <Cell x={L} cells={m.cells} mid={mid} />
+              {!voltage && (
+                <g>
+                  <text x={L + 40} y={mid} fontSize="16" fontWeight="700" fill="#6d28d9">{fmtV(m.V)}</text>
+                  <text x={L + 40} y={mid + 17} fontSize="12" fill="#7c3aed">{m.cells} {m.cells === 1 ? "cell" : "cells"}</text>
+                </g>
+              )}
+              {ys.map((y, k) => (
+                <FlowDots
+                  key={k}
+                  d={`M ${L} ${wireTop} V ${T} H ${busL} V ${y} H ${busR} V ${B} H ${L} V ${wireBot}`}
+                  current={p.branchI[k]}
+                  color="#f59e0b"
+                  offset={k / n}
+                />
+              ))}
+              {ys.map((y, k) => (
+                <Bulb
+                  key={k}
+                  x={BX}
+                  y={y}
+                  name={names[k]}
+                  out={p.out[k]}
+                  glow={glowOf(p.power[k])}
+                  onToggle={() => onToggle(k)}
+                  labelX={BX + 24}
+                  labelY={y + 18}
+                  labelAnchor="start"
+                  filterId="glow-p"
+                />
+              ))}
+              {!voltage && (
+                <g>
+                  {ys.map((y, k) => (
+                    <Meter key={k} x={meterX} y={y} kind="A" text={`A${k + 1} = ${fmtA(p.branchI[k])}`} tx={meterX} ty={y - 19} />
+                  ))}
+                  <Meter x={240} y={B} kind="A" text={`A = ${fmtA(p.mainI)}`} tx={240} ty={B + 28} />
+                </g>
+              )}
+              {voltage && (
+                <g>
+                  <path d={`M ${L} ${wireTop - 6} H 20 V ${mid - 12} M 20 ${mid + 12} V ${wireBot + 6} H ${L}`} fill="none" stroke="#7c3aed" strokeWidth="1.6" />
+                  <Meter x={20} y={mid} kind="V" text={fmtV(m.V)} tx={22} ty={wireBot + 28} />
+                  {ys.map((y, k) => (
+                    <g key={k}>
+                      <path d={`M ${BX - 26} ${y} V ${y - 34} H ${BX - 12} M ${BX + 12} ${y - 34} H ${BX + 26} V ${y}`} fill="none" stroke="#7c3aed" strokeWidth="1.6" />
+                      <Meter x={BX} y={y - 34} kind="V" text={`V${k + 1} = ${fmtV(p.bulbV[k])}`} tx={BX + 32} ty={y - 30} anchor="start" />
+                    </g>
+                  ))}
+                </g>
+              )}
+            </svg>
+          </div>
+          {voltage && (
+            <div className="shrink-0">
+              <VoltageHill V={m.V} drops={[m.V]} labels={[`each branch −${fmtV(m.V)}`]} />
+            </div>
+          )}
+          <div className="shrink-0 text-sm">
+            <p className="tabular-nums">{footer.en}{voltage && <Legend />}</p>
+            <p className="text-slate-500">{footer.zh}</p>
+          </div>
+        </section>
+      );
+    }
+
+    function compareLine(m) {
+      const s = m.series;
+      const p = m.parallel;
+      const ps = s.open ? 0 : s.power[0];
+      const pp = p.intact ? (m.V * m.V) / m.ohms : 0;
+      if (ps > 0 && pp > 0) {
+        const ratio = pp / ps;
+        if (Math.abs(ratio - 1) < 0.01) {
+          return { en: "With one bulb each, the two circuits are the same. The difference starts at two bulbs.", zh: "各只有一顆燈泡時，兩個電路完全一樣。有兩顆或以上燈泡時才出現分別。" };
+        }
+        const shown = Math.abs(ratio - Math.round(ratio)) < 0.01 ? String(Math.round(ratio)) : ratio.toFixed(1);
+        return {
+          en: `Each parallel bulb gets ${shown}× the power of a series bulb, so it glows brighter.`,
+          zh: `每顆並聯燈泡得到的功率是串聯燈泡的 ${shown} 倍，所以更亮。`,
+        };
+      }
+      if (ps === 0 && pp > 0) {
+        return { en: "The series circuit is broken, so every series bulb is out. The parallel bulbs still light.", zh: "串聯電路斷了，所有串聯燈泡都熄滅；並聯燈泡仍然亮著。" };
+      }
+      if (pp === 0 && ps > 0) {
+        return { en: "Every parallel bulb has been removed, so no current flows in the parallel circuit.", zh: "所有並聯燈泡都被移走，並聯電路沒有電流。" };
+      }
+      return { en: "No bulb is lit in either circuit.", zh: "兩個電路都沒有燈泡亮著。" };
+    }
+
+    function insightLine(focus, m) {
+      const copy = {
+        current: ["Series has one path, so every ammeter reads the same. In parallel the current splits at the junction, and the branch currents add up to the main current.", "串聯只有一條路徑，每個電流錶讀數相同。並聯時電流在分岔點分開，各支路電流加起來等於總電流。"],
+        voltage: ["In series the bulbs share the cell's voltage, so their readings add up to it. In parallel every branch sits straight across the cell, so each bulb gets the full voltage.", "串聯時燈泡分享電池電壓，讀數加起來等於電池電壓。並聯時每條支路直接接在電池兩端，每顆燈泡都得到全部電壓。"],
+        cells: ["More cells raise the voltage in both circuits, so both carry more current and every bulb glows brighter.", "電池愈多，兩個電路的電壓都愈高，電流愈大，燈泡都更亮。"],
+        count: ["Another bulb in series adds resistance, so the current falls and every bulb dims. Another branch in parallel adds a path, so the total current rises and each bulb keeps its brightness.", "串聯多加一顆燈泡，電阻增加，電流減少，每顆燈泡變暗。並聯多加一條支路，多了一條路徑，總電流增加，每顆燈泡亮度不變。"],
+        ohms: ["Higher-resistance bulbs let less current through in both circuits, so every bulb dims.", "燈泡電阻愈大，兩個電路的電流都愈小，燈泡都變暗。"],
+        breakSeries: m.series.open
+          ? ["Removing one series bulb breaks the only path. The current stops everywhere, so every series bulb goes out.", "串聯時移走一顆燈泡，唯一的路徑就斷了，電流處處停止，所有燈泡都熄滅。"]
+          : ["Every series bulb is back, so the single path is complete again.", "所有串聯燈泡都放回去，唯一的路徑重新接通。"],
+        breakParallel: m.parallel.out.some(Boolean)
+          ? ["Removing a parallel bulb only breaks its own branch. The other branches still sit across the cell, so their bulbs stay just as bright.", "並聯時移走一顆燈泡，只斷了它自己的支路。其他支路仍接在電池兩端，燈泡亮度不變。"]
+          : ["Every parallel bulb is back. Each branch carries its own current again.", "所有並聯燈泡都放回去，每條支路重新有電流。"],
+      }[focus];
+      return { en: copy[0], zh: copy[1] };
+    }
+
+    function NotesPanel({ m }) {
+      const Rs = m.count * m.ohms;
+      const Is = m.V / Rs;
+      const Ib = m.V / m.ohms;
+      const mainI = Ib * m.count;
+      const rows = [
+        ["Paths 路徑", "One path for the current", "One path per branch"],
+        ["Current 電流", "Same everywhere: A1 = A2 = A3", "Splits: A = A1 + A2 + …"],
+        ["Voltage 電壓", "Shared: V = V1 + V2 + …", "Same on each branch: V = V1 = V2"],
+        ["Total resistance 總電阻", "Adds up: R = R1 + R2 + …", "Smaller than any single branch"],
+        ["Add a bulb 加一顆燈泡", "Every bulb dims", "Each bulb keeps its brightness; total current rises"],
+        ["Remove a bulb 移走一顆", "Every bulb goes out", "The other bulbs stay lit"],
+        ["Example 例子", "Old fairy lights", "Wiring in homes"],
+      ];
+      return (
+        <div className="space-y-4 text-sm">
+          <section>
+            <h2 className="text-base font-semibold">Series vs parallel <span className="font-normal text-slate-500">串聯與並聯</span></h2>
+            <div className="mt-2 overflow-hidden rounded-2xl ring-1 ring-slate-200">
+              <div className="grid grid-cols-[1fr_1.2fr_1.2fr] bg-slate-900 text-xs font-semibold text-white">
+                <span className="px-2 py-1.5"></span>
+                <span className="px-2 py-1.5">Series 串聯</span>
+                <span className="px-2 py-1.5">Parallel 並聯</span>
+              </div>
+              {rows.map(([label, series, parallel], k) => (
+                <div key={label} className={`grid grid-cols-[1fr_1.2fr_1.2fr] text-xs ${k % 2 ? "bg-slate-50" : "bg-white"}`}>
+                  <span className="px-2 py-1.5 font-medium text-slate-700">{label}</span>
+                  <span className="px-2 py-1.5">{series}</span>
+                  <span className="px-2 py-1.5">{parallel}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="rounded-2xl bg-slate-50 px-3 py-3 leading-6 ring-1 ring-slate-200/80">
+            <p className="font-medium">Worked example, all bulbs in place 計算例子</p>
+            <p className="mt-1 font-medium text-slate-700">Series</p>
+            <p className="tabular-nums">R = {m.count} × {m.ohms} = {trim(Rs)} Ω</p>
+            <p className="tabular-nums">I = {trim(m.V)} ÷ {trim(Rs)} = {trim(Is)} A</p>
+            <p className="tabular-nums">Each bulb: V = {trim(Is)} × {m.ohms} = {trim(Is * m.ohms)} V</p>
+            <p className="mt-2 font-medium text-slate-700">Parallel</p>
+            <p className="tabular-nums">Each branch: I = {trim(m.V)} ÷ {m.ohms} = {trim(Ib)} A</p>
+            <p className="tabular-nums">Main: I = {m.count} × {trim(Ib)} = {trim(mainI)} A</p>
+            <p className="tabular-nums">Total R = {trim(m.V)} ÷ {trim(mainI)} = {trim(m.V / mainI)} Ω</p>
+          </section>
+
+          <section className="rounded-2xl bg-amber-50 px-3 py-3 text-amber-950 ring-1 ring-amber-200">
+            <p className="font-medium">Exam tip 考試提示</p>
+            <p className="mt-1">Remove one bulb from the series circuit and look at its voltmeter. The gap reads the full cell voltage, while the bulbs still in place read 0 V.</p>
+            <p className="mt-1 text-amber-900/80">從串聯電路移走一顆燈泡，看它的伏特計：缺口讀到全部電池電壓，其他燈泡讀數是 0 V。</p>
+          </section>
+
+          <p className="text-xs leading-5 text-slate-500">
+            Classroom model: ideal cells and wires, identical bulbs with a fixed resistance. Brightness follows the power each bulb receives.
+            課堂模型：電池和導線都是理想的，燈泡完全相同，電阻固定。
+          </p>
+        </div>
+      );
+    }
+
+    function App() {
+      const [cells, setCells] = useState(4);
+      const [count, setCount] = useState(2);
+      const [ohms, setOhms] = useState(3);
+      const [seriesOut, setSeriesOut] = useState([false, false, false]);
+      const [parallelOut, setParallelOut] = useState([false, false, false]);
+      const [lens, setLens] = useState("current");
+      const [focus, setFocus] = useState("current");
+      const [deckOpen, setDeckOpen] = useState(true);
+      const [deckTab, setDeckTab] = useState("build");
+
+      const m = useMemo(
+        () => computeModel({ cells, count, ohms, seriesOut, parallelOut }),
+        [cells, count, ohms, seriesOut, parallelOut]
+      );
+      const compare = compareLine(m);
+      const insight = insightLine(focus, m);
+      const anyOut = m.series.out.some(Boolean) || m.parallel.out.some(Boolean);
+
+      function chooseLens(next) {
+        setLens(next);
+        setFocus(next);
+      }
+
+      function chooseCount(next) {
+        setCount(next);
+        const clear = (prev) => prev.map((out, i) => (i < next ? out : false));
+        setSeriesOut(clear);
+        setParallelOut(clear);
+        setFocus("count");
+      }
+
+      function toggle(setter, focusKey) {
+        return (i) => {
+          setter((prev) => prev.map((out, k) => (k === i ? !out : out)));
+          setFocus(focusKey);
+        };
+      }
+
+      function restoreAll() {
+        setSeriesOut([false, false, false]);
+        setParallelOut([false, false, false]);
+        setFocus(lens);
+      }
+
+      function reset() {
+        setCells(4);
+        setCount(2);
+        setOhms(3);
+        restoreAll();
+        setLens("current");
+        setFocus("current");
+      }
+
+      function chooseTab(id) {
+        setDeckTab(id);
+        setDeckOpen(true);
+      }
+
+      const chip = (active) =>
+        `h-10 min-w-10 rounded-xl px-3 text-sm font-semibold ${active ? "bg-violet-600 text-white" : "bg-slate-100 text-slate-500 hover:bg-slate-200"}`;
+
+      return (
+        <main className="stage-shell">
+          <div className="stage">
+            <header className="flex shrink-0 flex-wrap items-end justify-between gap-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-sky-700">Model 2 · Series and parallel 串聯與並聯</p>
+                <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">Series vs parallel circuits</h1>
+              </div>
+              <div role="group" aria-label="Lens" className="inline-flex rounded-full bg-white p-1 shadow-sm ring-1 ring-slate-200">
+                {[
+                  ["current", "Current 電流", "bg-amber-500 text-white"],
+                  ["voltage", "Voltage 電壓", "bg-violet-600 text-white"],
+                ].map(([id, label, on]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    aria-pressed={lens === id}
+                    onClick={() => chooseLens(id)}
+                    className={`rounded-full px-4 py-1.5 text-sm font-semibold ${lens === id ? on : "text-slate-600 hover:bg-slate-50"}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </header>
+
+            <div className="shrink-0 rounded-2xl bg-white px-4 py-2 text-sm shadow-sm ring-1 ring-slate-200/80" aria-live="polite">
+              <p className="font-semibold">{compare.en} <span className="font-normal text-slate-500">{compare.zh}</span></p>
+              <p className="mt-0.5 text-slate-700">{insight.en} <span className="text-slate-500">{insight.zh}</span></p>
+            </div>
+
+            <div className="twin">
+              <SeriesCard m={m} lens={lens} onToggle={toggle(setSeriesOut, "breakSeries")} />
+              <ParallelCard m={m} lens={lens} onToggle={toggle(setParallelOut, "breakParallel")} />
+            </div>
+          </div>
+
+          <aside className={deckOpen ? "deck is-open" : "deck"} aria-label="Controls">
+            <div className="deck-panel">
+              <div className="deck-rail" role="tablist" aria-label="Control tabs">
+                <button type="button" className="deck-toggle" aria-expanded={deckOpen} onClick={() => setDeckOpen((open) => !open)}>
+                  {deckOpen ? "Hide" : "Show"}
+                </button>
+                {[
+                  ["build", "Build", "設定"],
+                  ["notes", "Notes", "說明"],
+                ].map(([id, en, zh]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    role="tab"
+                    aria-selected={deckOpen && deckTab === id}
+                    aria-label={`${en} ${zh}`}
+                    className="deck-tab"
+                    onClick={() => chooseTab(id)}
+                  >
+                    {en}
+                  </button>
+                ))}
+              </div>
+              {deckOpen && (
+                <div className="deck-body">
+                  {deckTab === "build" && (
+                    <div className="space-y-5">
+                      <section>
+                        <h2 className="text-base font-semibold">Cells <span className="font-normal text-slate-500">電池</span></h2>
+                        <p className="mt-1 text-sm text-slate-500">Each cell is {CELL_VOLTS.toFixed(1)} V. Both circuits use the same cells. 每節 {CELL_VOLTS.toFixed(1)} V，兩個電路共用。</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {Array.from({ length: MAX_CELLS }, (_, i) => (
+                            <button
+                              key={i}
+                              type="button"
+                              aria-pressed={cells === i + 1}
+                              aria-label={`${i + 1} cells, ${fmtV((i + 1) * CELL_VOLTS)}`}
+                              onClick={() => { setCells(i + 1); setFocus("cells"); }}
+                              className={chip(cells === i + 1)}
+                            >
+                              {fmtV((i + 1) * CELL_VOLTS)}
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+
+                      <section>
+                        <h2 className="text-base font-semibold">Bulbs in each circuit <span className="font-normal text-slate-500">每個電路的燈泡</span></h2>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {Array.from({ length: MAX_BULBS }, (_, i) => (
+                            <button key={i} type="button" aria-pressed={count === i + 1} onClick={() => chooseCount(i + 1)} className={chip(count === i + 1)}>
+                              {i + 1}
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+
+                      <section>
+                        <h2 className="text-base font-semibold">Resistance of each bulb <span className="font-normal text-slate-500">每顆燈泡的電阻</span></h2>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {OHM_CHOICES.map((value) => (
+                            <button key={value} type="button" aria-pressed={ohms === value} onClick={() => { setOhms(value); setFocus("ohms"); }} className={chip(ohms === value)}>
+                              {value} Ω
+                            </button>
+                          ))}
+                        </div>
+                      </section>
+
+                      <section className="rounded-2xl bg-sky-50 px-3 py-3 text-sm text-sky-950">
+                        <p className="font-medium">Remove a bulb 移走燈泡</p>
+                        <p className="mt-1">Click any bulb in either circuit to take it out. Click the empty socket to put it back.</p>
+                        <p className="mt-1 text-sky-900/80">點擊任何一顆燈泡把它移走，再點擊空的燈座放回去。</p>
+                      </section>
+
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={!anyOut}
+                          onClick={restoreAll}
+                          className="rounded-full bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
+                        >
+                          Put every bulb back 放回所有燈泡
+                        </button>
+                        <button type="button" onClick={reset} className="rounded-full bg-slate-50 px-4 py-2 text-sm ring-1 ring-slate-200 hover:bg-white">
+                          Reset 重置
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {deckTab === "notes" && <NotesPanel m={m} />}
+                </div>
+              )}
+            </div>
+          </aside>
+        </main>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
